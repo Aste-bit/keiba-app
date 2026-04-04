@@ -264,36 +264,42 @@ function App() {
       return;
     }
 
-    const checkAuth = async () => {
-      try {
-        const { data: { session }, error } = await sb.auth.getSession();
-        if (error) throw error;
+    let initialCheckDone = false;
 
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserData(session.user.id);
-        }
-      } catch (err) {
-        console.error("Auth check error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-
-    // Listen for auth changes
+    // Listen for auth changes (this is the primary handler)
     const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth event:", event, session?.user?.email);
       if (session?.user) {
         setUser(session.user);
-        await loadUserData(session.user.id);
+        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+          try {
+            await loadUserData(session.user.id);
+          } catch (err) {
+            console.error("Load data error:", err);
+          }
+        }
       } else {
         setUser(null);
         setRaces([]);
       }
+      if (!initialCheckDone) {
+        initialCheckDone = true;
+        setLoading(false);
+      }
     });
 
-    return () => subscription?.unsubscribe();
+    // Fallback: if onAuthStateChange doesn't fire within 3s, stop loading
+    const timeout = setTimeout(() => {
+      if (!initialCheckDone) {
+        initialCheckDone = true;
+        setLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      subscription?.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   /* ── Load user data from Supabase ── */
@@ -536,9 +542,19 @@ function App() {
   }
 
   /* ── Main app (authenticated) ── */
-  const race = races[selRace];
+  if (!races || races.length === 0) {
+    return (
+      <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center", color: "#6b7280" }}>
+          <div style={{ fontSize: 14, marginBottom: 16 }}>データを読み込み中...</div>
+          <div style={{ animation: "pulse 2s ease-in-out infinite", fontSize: 12, color: "#9ca3af" }}>●</div>
+        </div>
+      </div>
+    );
+  }
+  const race = races[selRace] || races[0];
   const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
-  const updH = (name, field, val) => upd({ horses: race.horses.map((h) => h.name === name ? { ...h, [field]: val } : h) });
+  const updH = (name, field, val) => upd({ horses: race?.horses?.map((h) => h.name === name ? { ...h, [field]: val } : h) || [] });
 
   /* ── Calcs ── */
   const ar = useMemo(() => {
