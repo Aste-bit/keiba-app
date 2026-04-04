@@ -331,9 +331,10 @@ function App() {
 
   /* ── Save to Supabase (debounced) ── */
   const saveToSupabase = useCallback(async (userId, racesData) => {
-    if (!sb) return;
+    if (!sb) { console.warn("sb is null, cannot save"); return; }
 
     try {
+      console.log("Saving to Supabase...", { userId, racesCount: racesData?.length });
       const { error } = await sb
         .from("user_data")
         .upsert(
@@ -346,6 +347,7 @@ function App() {
         );
 
       if (error) throw error;
+      console.log("Save success!");
     } catch (err) {
       console.error("Save to Supabase error:", err);
     }
@@ -780,8 +782,8 @@ function App() {
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
               <span style={{ color: "#6b7280" }}>{user.email?.split("@")?.[0] || "User"}</span>
               <button
-                onClick={handleLogout}
-                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
+                onClick={(e) => { e.stopPropagation(); handleLogout(); }}
+                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 10, fontWeight: 700, cursor: "pointer", position: "relative", zIndex: 100, pointerEvents: "auto" }}
               >
                 ログアウト
               </button>
