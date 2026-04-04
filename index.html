@@ -37,6 +37,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_oGFr1dFrFNr3cvq9X1jOkg_CEcqzcBN";
 
 // Initialize Supabase client from CDN (window.supabase)
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+console.log("[init] Supabase client:", sb ? "OK" : "FAILED (window.supabase not found)");
 
 const INITIAL_RACES = [
   {
@@ -305,27 +306,36 @@ function App() {
 
   /* ── Load user data from Supabase ── */
   const loadUserData = useCallback(async (userId) => {
+    console.log("[loadUserData] called with userId:", userId);
     try {
+      console.log("[loadUserData] querying user_data table...");
       const { data, error } = await sb
         .from("user_data")
         .select("races")
         .eq("user_id", userId)
         .single();
 
+      console.log("[loadUserData] query result:", { data: data ? "exists" : "null", error: error?.code || "none" });
+
       if (error && error.code !== "PGRST116") {
         throw error;
       }
 
       if (data?.races && Array.isArray(data.races) && data.races.length > 0) {
+        console.log("[loadUserData] loaded", data.races.length, "races from DB");
+        dataLoadedRef.current = true;
         setRaces(data.races);
       } else {
-        // First time user: save INITIAL_RACES
+        console.log("[loadUserData] no data found, saving INITIAL_RACES");
         await saveToSupabase(userId, INITIAL_RACES);
+        dataLoadedRef.current = true;
         setRaces(INITIAL_RACES);
       }
-      dataLoadedRef.current = true;
+      console.log("[loadUserData] dataLoadedRef is now TRUE");
     } catch (err) {
-      console.error("Load user data error:", err);
+      console.error("[loadUserData] ERROR:", err);
+      // Still set dataLoadedRef so user changes can save
+      dataLoadedRef.current = true;
     }
   }, []);
 
@@ -355,6 +365,7 @@ function App() {
 
   /* ── Auto-save with debounce ── */
   useEffect(() => {
+    console.log("[auto-save] effect triggered. user:", !!user, "dataLoaded:", dataLoadedRef.current);
     if (!user || !dataLoadedRef.current) return;
 
     setSaving("saving");
@@ -616,7 +627,9 @@ function App() {
   };
 
   const handleLogout = async () => {
+    console.log("[handleLogout] called!");
     try {
+      dataLoadedRef.current = false;
       await sb.auth.signOut();
       setUser(null);
       setRaces(INITIAL_RACES);
@@ -624,7 +637,9 @@ function App() {
       setAuthPassword("");
       setAuthError("");
       setAuthConfirmMsg("");
+      console.log("[handleLogout] success");
     } catch (err) {
+      console.error("[handleLogout] error:", err);
       setAuthError("ログアウトに失敗しました");
     }
   };
@@ -782,8 +797,9 @@ function App() {
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
               <span style={{ color: "#6b7280" }}>{user.email?.split("@")?.[0] || "User"}</span>
               <button
-                onClick={(e) => { e.stopPropagation(); handleLogout(); }}
-                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 10, fontWeight: 700, cursor: "pointer", position: "relative", zIndex: 100, pointerEvents: "auto" }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log("[button] onClick fired"); handleLogout(); }}
+                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); console.log("[button] onTouchEnd fired"); handleLogout(); }}
+                style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 11, fontWeight: 700, cursor: "pointer", position: "relative", zIndex: 9999, pointerEvents: "auto", WebkitTapHighlightColor: "transparent", touchAction: "manipulation", userSelect: "none" }}
               >
                 ログアウト
               </button>
