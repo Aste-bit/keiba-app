@@ -268,21 +268,15 @@ function App() {
 
     let initialCheckDone = false;
 
-    // Listen for auth changes (this is the primary handler)
-    const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth changes — DO NOT await async work here (causes auth lock deadlock)
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
       console.log("Auth event:", event, session?.user?.email);
       if (session?.user) {
         setUser(session.user);
-        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-          try {
-            await loadUserData(session.user.id);
-          } catch (err) {
-            console.error("Load data error:", err);
-          }
-        }
       } else {
         setUser(null);
         setRaces(INITIAL_RACES);
+        dataLoadedRef.current = false;
       }
       if (!initialCheckDone) {
         initialCheckDone = true;
@@ -303,6 +297,14 @@ function App() {
       clearTimeout(timeout);
     };
   }, []);
+
+  /* ── Load data when user changes (separate from auth callback to avoid lock) ── */
+  useEffect(() => {
+    if (user && !dataLoadedRef.current) {
+      console.log("[useEffect user] user set, loading data...");
+      loadUserData(user.id);
+    }
+  }, [user, loadUserData]);
 
   /* ── Load user data from Supabase ── */
   const loadUserData = useCallback(async (userId) => {
@@ -599,8 +601,8 @@ function App() {
         setAuthEmail("");
         setAuthPassword("");
       } else if (data?.session) {
+        // setUser triggers useEffect which calls loadUserData
         setUser(data.user);
-        await loadUserData(data.user.id);
       }
     } catch (err) {
       setAuthError(err.message || "サインアップに失敗しました");
@@ -618,8 +620,8 @@ function App() {
       if (error) throw error;
 
       if (data?.user) {
+        // setUser triggers useEffect which calls loadUserData
         setUser(data.user);
-        await loadUserData(data.user.id);
       }
     } catch (err) {
       setAuthError(err.message || "ログインに失敗しました");
