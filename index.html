@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>競馬予想ノート v3.0</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f8fafc; -webkit-font-smoothing: antialiased; }
+  button { font-family: inherit; }
+  input, textarea, select { font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+/* ══════════════════════════════════════════════════════════════
+   競馬予想ノート v3.0
+   ─ 一覧性重視 / 分析省略なし / UX大幅改善
+   設計方針:
+     1. 一覧表で全馬を俯瞰 → タップで詳細
+     2. レース分析は全文スクロール表示（タブ切り替えしない）
+     3. 自分の分析入力はワンタップでアクセス
+     4. タブは3つに統合（分析・予想 / 結果・振り返り / 履歴）
+     5. 分析テキストは省略しない
+   ══════════════════════════════════════════════════════════════ */
+
+const INITIAL_RACES = [
+  {
+    id: "osaka-hai-2026",
+    name: "大阪杯",
+    year: 2026,
+    grade: "GI",
+    date: "2026-04-05",
+    course: "阪神11R 芝2000m 内回りAコース",
+    post: "15:40",
+    weather: "晴れ",
+    track: "良（回復見込み）",
+    trackNote: "内側に傷みあり",
+    heads: 15,
+
+    raceNotes: [
+      { title: "総合所見", body: "今年の大阪杯は「絶対的な主役不在」のレース。クロワデュノールは実績最上位だが大外枠、ダノンデサイルは好枠だが乗り替わり、メイショウタバルは好枠＋名手だが2000mへの距離短縮、レーベンスティールはGIの壁。それぞれに不安要素がある。\n\n馬券的にはどの馬が来てもおかしくない混戦模様で、単勝オッズも3〜9倍台に5頭がひしめく接戦。「1番人気だから勝つ」とは言えないレース。\n\nGI昇格後の大阪杯では1番人気は9年で2勝にとどまり、2番人気の方が好走率が高いデータもある。6〜9番人気から3着内に7回入っており、人気薄の激走にも注意が必要。" },
+      { title: "天候・馬場コンディション（4/5当日）", body: "天候: 晴れ予報\n前日(4/4): 昼頃から雨、芝はやや重に悪化\n週中の降水: 火曜8mm、水曜8mm、木曜3mm\n当日見込み: 阪神は水はけが良く、日曜は晴れ→良馬場まで回復の見込み\n\nAコース（内柵を最内に設置）使用。向正面〜正面にかけてコース内側に傷みあり。\n\n馬場が予想に与える影響:\n(1) 内側に傷みがある → 内枠を通る馬にとってやや不利\n → ダノンデサイル（3枠4番）は内を通ると傷みの影響を受ける可能性\n → ただし騎手の判断で少し外目を回れば回避可能\n\n(2) 逆に外枠の馬にとっては「内が荒れている分、外を回るロスが帳消しになる」可能性\n → クロワデュノール（15番）やタガノデュード（14番）にとって微かな追い風\n\n(3) 良馬場まで回復すれば → スピード型の馬が有利。高速決着になりやすい\n やや重のままなら → パワー型、道悪巧者が浮上\n\n(4) メイショウタバルの逃げ脚質への影響\n → 良馬場ならハイペースの逃げが決まりやすい\n → やや重なら消耗が大きく、差し馬にチャンスが広がる" },
+      { title: "ファクトチェック（前回AI分析の検証）", body: "前回の分析を検証した結果：60点/100点\n\n【正確だった点】\n・クロワデュノールGI2勝（2024年ホープフルS、2025年日本ダービー）→ 正確\n・戸崎圭太が騎乗停止→坂井瑠星に乗り替わり → 正確（3/14中山9Rの進路妨害で3/28〜4/5停止）\n・ドバイ遠征回避→大阪杯参戦（中東情勢） → 正確\n・GI昇格後ダービー馬未勝利のジンクス → 正確\n\n【致命的な欠点】\n・枠順という最重要ファクターが完全に欠落していた\n → クロワデュノール8枠15番（大外）vs ダノンデサイル3枠4番（好枠）\n → GI昇格後の大阪杯で大外枠は0勝（0-1-0-8）、勝率0%\n → SNSでも「大外かよ」「試練の枠」と大きな反応\n・クロワデュノール1番人気を断言しているが、大外枠のマイナスを考慮していない\n・2強以外の有力馬（レーベンスティール、メイショウタバル、ショウヘイ）の分析がゼロ\n・引用データのソースと信頼性が不明（サンプル数・対象期間の記載なし）" },
+      { title: "大阪杯の傾向データ", body: "・GI昇格後、1番人気は9年で2勝のみ → 勝ちきれない傾向\n・2番人気の方が好走率が高いデータあり\n・6〜9番人気から3着内が7回 → 穴馬の台頭が非常に多い\n・3年ぶりのAコース開催で、馬番8・9の複勝率が66.7%という過去データ\n・GI昇格後の大外枠は0勝（0-1-0-8）、勝率0%\n・日本ダービー馬が大阪杯を制したことは一度もない（ジンクス継続中）\n・GI昇格後の大阪杯で優勝馬は4歳と5歳に限定されている" },
+      { title: "穴馬比較: エコロディノス vs タガノデュード", body: "項目              エコロディノス          タガノデュード\n前走クラス        GII京都記念3着          GIII小倉大賞典1着\n芝2000m適性       全て馬券圏内            複勝率77.8%\nコース適性        阪神4戦3度圏内          阪神データ少\n血統（父）        キタサンブラック        ヤマカツエース\n                  （阪神2000m複勝率39%）  （阪神2000m 0勝）\n年齢              4歳（成長期）           5歳\n騎手              池添謙一                古川吉洋\n枠順              7枠13番                 8枠14番\n3着以内可能性     約20%                   10〜15%\n\n→ 総合的にエコロディノスの方が上位評価\n→ 三連複のヒモとしてはエコロディノスを優先\n→ タガノデュードは末端候補として「保険の1点」" },
+    ],
+
+    horses: [
+      { num: 1, frame: 1, name: "サンストックトン", jockey: "高杉吏麒", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 2, frame: 1, name: "ジューンテイク", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "京都記念1着", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 3, frame: 2, name: "ステラヴェローチェ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      {
+        num: 4, frame: 3, name: "ダノンデサイル", jockey: "坂井瑠星", odds: 4.4,
+        training: "B", style: "中団", age: "4歳", weight: "58kg",
+        sire: "エピファネイア", damSire: "-",
+        note: "ダービー馬。好枠だが乗り替わり",
+        aiAnalysis: "【2番人気候補 ─ 3枠4番の好枠】\n2024年日本ダービー馬。能力は折り紙付き。3枠4番の好枠を確保し、阪神内回りではこの枠は有利。ドバイシーマクラシック→大阪杯に目標変更（中東情勢で遠征回避）。\n\n最大のリスクは鞍上の乗り替わり。戸崎圭太が騎乗停止（3/14中山9Rの進路妨害、3/28〜4/5停止）で坂井瑠星との初コンビ。大阪杯での乗り替わりは過去データ上マイナス傾向。安田翔伍調教師が3/16に乗り替わりを発表。\n\n一部予想ではダノンデサイル3.2倍で1番人気、クロワデュノール3.5倍で2番人気という見解もあり、「圧倒的1番人気」ではなく「僅差の1番人気争い」が正確な表現。",
+        aiPros: "2024年ダービー馬の実力 / 3枠4番の好枠（阪神内回りで有利）/ 阪神内回り適性",
+        aiCons: "坂井瑠星への乗り替わり（初コンビ）/ ダービー馬が大阪杯を制したことは一度もないジンクス",
+        aiTop3Pct: 50,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+      { num: 5, frame: 3, name: "エリキング", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "京都記念2着", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      {
+        num: 6, frame: 4, name: "メイショウタバル", jockey: "武豊", odds: 5.6,
+        training: "B", style: "逃げ", age: "5歳", weight: "58kg",
+        sire: "-", damSire: "-",
+        note: "宝塚記念馬。好枠＋名手",
+        aiAnalysis: "【4番人気候補 ─ 4枠6番の好枠＋武豊】\n2025年宝塚記念勝ち馬。同じ阪神内回りのGI実績がある唯一の馬。4枠6番の好枠に武豊騎手という組み合わせで、枠と騎手のアドバンテージは非常に大きい。\n\n逃げ脚質のため展開の鍵を握る存在。調教はB評価で、自身のテンポで走れるかが焦点。\n\n良馬場ならハイペースの逃げが決まりやすく、そのまま粘り込むシナリオ。やや重なら消耗が大きく、後方から差し馬にチャンスが広がる。天候次第で評価が大きく変わる馬。",
+        aiPros: "宝塚記念馬（阪神内回りGI実績あり）/ 4枠6番の好枠 / 武豊騎乗（大舞台の経験値）",
+        aiCons: "宝塚記念は芝2200m→今回2000mへの距離短縮がどう出るか / やや重だと消耗リスク大",
+        aiTop3Pct: 45,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+      { num: 7, frame: 4, name: "ベラジオオペラ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "昨年の大阪杯勝ち馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 8, frame: 5, name: "ショウヘイ", jockey: "-", odds: 5.4,
+        training: "A", style: "-", age: "-", weight: "58kg",
+        sire: "-", damSire: "-",
+        note: "AJCC勝ち。調教最上位A評価",
+        aiAnalysis: "【3番人気候補 ─ 調教メンバー最上位】\n2026年AJCC（GII）勝ちで勢いがある。調教診断でメンバー中最上位のA評価を獲得しており、仕上がりの良さが際立つ。\n\n上位2頭（クロワデュノール・ダノンデサイル）にそれぞれ大きな不安要素がある分、漁夫の利を狙える絶好のポジション。GI実績は未知数だが、調教の良さと勢いで一気に突き抜ける可能性がある。",
+        aiPros: "AJCC勝ちの勢い / 調教A評価でメンバー最上位 / 上位馬の不安要素を突ける位置",
+        aiCons: "GI実績が未知数 / 枠順・騎手情報が未確認",
+        aiTop3Pct: 45,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+      { num: 9, frame: 5, name: "タスティエーラ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "2023ダービー馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 10, frame: 6, name: "プラダリア", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 11, frame: 6, name: "ソールオリエンス", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "2023皐月賞馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      {
+        num: 12, frame: 7, name: "レーベンスティール", jockey: "ルメール", odds: 9.2,
+        training: "A", style: "差し", age: "-", weight: "58kg",
+        sire: "-", damSire: "-",
+        note: "重賞5勝。GI未勝利の壁",
+        aiAnalysis: "【5番人気候補 ─ ルメール騎乗で壁を破れるか】\n重賞5勝。中山記念勝ちなど実力は上位クラス。GI連勝中と絶好調のルメール騎手が騎乗。7枠12番。\n\nGI未勝利が唯一にして最大の課題。ここで壁を破れるか。騎手力ではルメールは間違いなくメンバートップだが、これまでGIで勝ちきれなかった「何か」が解消されているかが焦点。\n\n調教A評価で仕上がりも好評。ルメールのGI連勝の勢いに乗れれば十分にチャンスあり。",
+        aiPros: "重賞5勝の確かな実力 / 絶好調・GI連勝中のルメール騎乗 / 調教A評価",
+        aiCons: "GI未勝利の壁（これまで何度もGIで勝ちきれていない）",
+        aiTop3Pct: 40,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+      {
+        num: 13, frame: 7, name: "エコロディノス", jockey: "池添謙一", odds: null,
+        training: "B", style: "先行", age: "4歳", weight: "58kg",
+        sire: "キタサンブラック", damSire: "-",
+        note: "芝2000m全て圏内。穴馬最有力",
+        aiAnalysis: "【穴馬最上位評価 ─ 3着以内の可能性: 約20%】\n\n4歳牡馬。栗東・大久保龍志厩舎。キャリア8戦と浅いが直近5走で3勝。\n\n前走: GII京都記念3着（重賞初挑戦でいきなり3着に食い込む。1着ジューンテイク、2着エリキングに次ぐ好走。GIIで通用する力を既に証明済み）。\n\n【距離適性】芝2000mでは全て馬券圏内。この距離での信頼度はメンバー中トップクラス。\n【コース適性】阪神コース4戦3度馬券圏内。舞台との相性が抜群に良い。\n\n【血統的裏付け】父キタサンブラックは阪神芝2000mで勝率16.1%・複勝率38.7%の好相性。クロワデュノールと同じ父系で、この舞台への血統的裏付けがしっかりある。\n\n4歳馬であることもプラス。GI昇格後の大阪杯で優勝馬は4歳と5歳に限定されており、年齢条件に合致。成長途上でまだ上積みが見込める。先行力と持続力が武器で、阪神内回りの適性にも合う。\n\n【リスク】GI未経験で相手が一気に強化。池添謙一はベテランで経験豊富だが近年のGI勝ちは少なく、ルメール・武豊・川田レベルとの騎手力差はある。キャリア8戦で経験が浅く、GIの厳しい流れに戸惑う可能性。調教はカリカリした面や頭の高さが目につくとの指摘。\n\n【馬券的バリュー】レーベンスティール（9.2倍）より人気薄であれば期待値が高い可能性がある。三連複のヒモとしてはタガノデュードより明確に優先して入れたい馬。馬連・ワイドで上位馬との組み合わせも検討の余地あり。",
+        aiPros: "芝2000m全て馬券圏内（距離適性トップ）/ 阪神4戦3度圏内（コース適性◎）/ 父キタサンブラック産駒（阪神2000m複勝率38.7%）/ 前走GII京都記念3着（GII好走済）/ 4歳の上積み / 先行力と持続力",
+        aiCons: "GI未経験（初のGIで相手が一気に強化）/ 池添謙一の近年GI実績の少なさ / キャリア8戦の経験の浅さ / 調教でカリカリした面の指摘",
+        aiTop3Pct: 20,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+      {
+        num: 14, frame: 8, name: "タガノデュード", jockey: "古川吉洋", odds: null,
+        training: "C", style: "差し", age: "5歳", weight: "58kg",
+        sire: "ヤマカツエース", damSire: "ハーツクライ",
+        note: "小倉大賞典勝ち。GI初挑戦",
+        aiAnalysis: "【穴馬 ─ 3着以内の可能性: 10〜15%】\n\n5歳牡馬。栗東・宮徹厩舎。斤量58kg。26戦5勝。総賞金1億4945万円。\n\n前走: GIII小倉大賞典（芝1800m）1着。4番人気から上がり最速で差し切り勝ち。外を回すロスがありながらの勝利で内容は濃い。タイム1:45.2（良）。古川吉洋騎手のJRA通算600勝達成レース。直近2連勝中で勢いがある。\n\n【距離適性】芝2000mでの複勝率が77.8%（一部メディア報）。距離そのものへの適性は高い。\n\n【プラス材料】\n・差し脚質 → 内が荒れた馬場なら外から差す展開が合う\n・8枠14番 → 内の傷みを避けて外を回る分にはロスが少ない\n・大阪杯GI昇格後、6〜9番人気から3着内が7回 → 穴枠に合致\n\n【マイナス材料】\n・GIIIを1つ勝っただけでGI挑戦は格上げ幅が大きい。ダービー馬2頭、宝塚記念馬が相手では実績が見劣り\n・調教評価C: 頭の位置が高く硬めの脚さばき。力強さに欠けるとの評価\n・古川吉洋はGI実績に乏しい。大舞台での経験値不足\n・父ヤマカツエース産駒は阪神芝2000mで0勝（5走）\n・小倉大賞典は芝1800m。200m延長で阪神の急坂を乗り越えるスタミナが問われる\n\n【馬券的判断】三連複・三連単のヒモ（末端候補）としてなら検討の余地あり。特に馬場が回復しきらず「やや重」のまま→差し有利の展開になった場合、外を回して上がり最速で突っ込んでくるシナリオはゼロではない。ただし軸にするのは危険。「保険のヒモに1点入れておく」タイプの馬。",
+        aiPros: "芝2000m複勝率77.8% / 直近2連勝の勢い / 差し脚質が内荒れ馬場に合う / 穴枠の傾向データに合致",
+        aiCons: "GIIIからGIへの格上げ幅が大きい / 調教C評価（硬めの脚さばき）/ 古川吉洋のGI実績不足 / 父ヤマカツエース産駒は阪神芝2000mで0勝 / 小倉1800m→阪神2000mの距離延長",
+        aiTop3Pct: 13,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+      {
+        num: 15, frame: 8, name: "クロワデュノール", jockey: "北村友一", odds: 3.9,
+        training: "B", style: "先行", age: "4歳", weight: "58kg",
+        sire: "キタサンブラック", damSire: "-",
+        note: "GI2勝。大外枠が最大懸念",
+        aiAnalysis: "【1番人気候補 ─ 実績最上位だが大外枠の試練】\n\nGI2勝の実績はメンバー最上位。2024年ホープフルS（中山芝2000m）、2025年日本ダービー（東京芝2400m）を制覇。出走メンバーの中でGI勝利数は最多。4歳にして豊富な実績を持つ。\n\n【強み】\n・スピード持続力が最大の武器。4〜5Fからスムーズに加速してスピードを持続させる能力に優れる。早めにアクセルを踏める展開になれば、自慢の持続力でそのまま押し切れる馬。\n・北村友一騎手との継続コンビ。鞍上変更がないことは大きなアドバンテージ。対するダノンデサイルは初コンビという不安要素がある。\n\n【最大の懸念: 大外8枠15番】\nGI昇格後の大阪杯で大外枠は0勝（0-1-0-8）、勝率0%。阪神内回り2000mは最初のコーナーまでの距離が短く、大外からだと先行ポジション確保に大きなロスが発生する。\n\nこの馬は前目で競馬したいタイプなので、枠順の影響をモロに受ける可能性がある。馬群に包まれた時の脆さ（アクセルを踏めない状況になると持ち味が出せない）も弱点で、大外枠はその弱点を増幅するリスク。SNSでも「大外かよ」「試練の枠」と大きな反応が出ている。\n\n能力は最上位だが、枠順という物理的不利をどう克服するかが全てのレース。",
+        aiPros: "GI2勝の最上位実績（ホープフルS・ダービー）/ スピード持続力が武器 / 北村友一との継続騎乗の安定感",
+        aiCons: "8枠15番の大外枠（大阪杯GI昇格後の大外は0勝）/ 馬群に包まれると持ち味が出せない脆さ / ダービー馬が大阪杯を制したことがないジンクス",
+        aiTop3Pct: 55,
+        myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
+      },
+    ],
+    myPicks: {},
+    myBets: "",
+    myMemo: "",
+    result: { r1: "", r2: "", r3: "" },
+    resultMemo: "",
+    reviewHit: "", reviewMiss: "", reviewLesson: "",
+  },
+];
+
+const MARKS = ["◎", "○", "▲", "△", "×", "―"];
+const MARK_LABELS = { "◎": "本命", "○": "対抗", "▲": "単穴", "△": "連下", "×": "消し", "―": "未評価" };
+const MC = {
+  "◎": { bg: "#dc2626", tx: "#fff" }, "○": { bg: "#2563eb", tx: "#fff" },
+  "▲": { bg: "#d97706", tx: "#fff" }, "△": { bg: "#6b7280", tx: "#fff" },
+  "×": { bg: "#e5e7eb", tx: "#9ca3af" }, "―": { bg: "#f9fafb", tx: "#d1d5db" },
+};
+const TC = {
+  A: { bg: "#dcfce7", tx: "#166534", bd: "#86efac" }, B: { bg: "#fef9c3", tx: "#854d0e", bd: "#fde047" },
+  C: { bg: "#fee2e2", tx: "#991b1b", bd: "#fca5a5" }, "-": { bg: "#f3f4f6", tx: "#9ca3af", bd: "#e5e7eb" },
+};
+const SC = { "逃げ": "#dc2626", "先行": "#ea580c", "差し": "#2563eb", "追込": "#7c3aed", "中団": "#0891b2", "-": "#9ca3af" };
+
+const TABS = [
+  { key: "analysis", label: "分析・予想" },
+  { key: "results", label: "結果・振り返り" },
+  { key: "history", label: "履歴" },
+];
+
+/* ── UI primitives ── */
+const Badge = ({ children, bg, color, border, style: s }) => (
+  <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: bg, color, border: border ? `1.5px solid ${border}` : "none", ...s }}>{children}</span>
+);
+const Card = ({ children, style: s, onClick }) => (
+  <div onClick={onClick} style={{ background: "#fff", borderRadius: 10, border: "1px solid #e5e7eb", padding: 14, ...s }}>{children}</div>
+);
+const Btn = ({ children, active, onClick, style: s }) => (
+  <button onClick={onClick} style={{ padding: "6px 14px", borderRadius: 8, border: active ? "2px solid #2563eb" : "1px solid #d1d5db", background: active ? "#eff6ff" : "#fff", color: active ? "#1d4ed8" : "#374151", fontWeight: 700, fontSize: 13, cursor: "pointer", ...s }}>{children}</button>
+);
+const Sec = ({ children }) => (
+  <h3 style={{ fontSize: 13, fontWeight: 800, color: "#374151", margin: "18px 0 8px", borderBottom: "2px solid #111827", paddingBottom: 4 }}>{children}</h3>
+);
+const MarkBadge = ({ m }) => {
+  const c = MC[m] || MC["―"];
+  return <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 5, background: c.bg, color: c.tx, fontSize: 13, fontWeight: 900, flexShrink: 0, border: m === "―" ? "1px solid #e5e7eb" : "none" }}>{m}</span>;
+};
+
+/* ── PctBar ── */
+const PctBar = ({ ai, my }) => (
+  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+    <div style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
+      <span style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700, minWidth: 16 }}>AI</span>
+      <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(ai ?? 0, 100)}%`, height: "100%", background: "#8b5cf6", borderRadius: 4 }} />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 800, color: "#7c3aed", minWidth: 28, textAlign: "right" }}>{ai != null ? `${ai}%` : "-"}</span>
+    </div>
+    <div style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
+      <span style={{ fontSize: 9, color: "#0891b2", fontWeight: 700, minWidth: 16 }}>自分</span>
+      <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(my ?? 0, 100)}%`, height: "100%", background: "#06b6d4", borderRadius: 4 }} />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 800, color: "#0891b2", minWidth: 28, textAlign: "right" }}>{my != null ? `${my}%` : "-"}</span>
+    </div>
+  </div>
+);
+
+/* ══════════════════════════════════════════ */
+function App() {
+  const [races, setRaces] = useState(INITIAL_RACES);
+  const [selRace, setSelRace] = useState(0);
+  const [tab, setTab] = useState("analysis");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newRace, setNewRace] = useState({ name: "", year: 2026, grade: "GI", date: "", course: "" });
+  const [detailHorse, setDetailHorse] = useState(null); // horse name or null
+  const [showNotes, setShowNotes] = useState(true);
+  const [editingHorse, setEditingHorse] = useState(null); // horse name for editing my analysis
+  const [editingAi, setEditingAi] = useState(null); // horse name for editing AI analysis
+
+  const race = races[selRace];
+  const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
+  const updH = (name, field, val) => upd({ horses: race.horses.map((h) => h.name === name ? { ...h, [field]: val } : h) });
+
+  /* ── Calcs ── */
+  const ar = useMemo(() => {
+    if (!race) return null;
+    const p = race.myPicks || {}, res = race.result || {};
+    const t3 = [res.r1, res.r2, res.r3].filter(Boolean);
+    if (!t3.length) return null;
+    const hon = Object.entries(p).find(([, v]) => v === "◎")?.[0];
+    const picked = Object.entries(p).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
+    const keshi = Object.entries(p).filter(([, v]) => v === "×").map(([k]) => k);
+    return {
+      t3, hon, picked, keshi,
+      honWin: hon && t3[0] === hon, honHit: hon && t3.includes(hon),
+      t3Hit: t3.filter((h) => picked.includes(h)).length,
+      kMiss: t3.filter((h) => keshi.includes(h)).length,
+    };
+  }, [race]);
+
+  const comp = useMemo(() => {
+    if (!ar) return null;
+    let aiW = 0, myW = 0, rows = [];
+    race.horses.forEach((h) => {
+      if (h.aiTop3Pct == null && h.myTop3Pct == null) return;
+      const inT3 = ar.t3.includes(h.name), pos = ar.t3.indexOf(h.name), act = inT3 ? 1 : 0;
+      const aE = h.aiTop3Pct != null ? Math.abs(h.aiTop3Pct / 100 - act) : null;
+      const mE = h.myTop3Pct != null ? Math.abs(h.myTop3Pct / 100 - act) : null;
+      let cl = "tie";
+      if (aE != null && mE != null) { if (aE < mE) { cl = "ai"; aiW++; } else if (mE < aE) { cl = "my"; myW++; } }
+      rows.push({ name: h.name, inT3, pos, aiPct: h.aiTop3Pct, myPct: h.myTop3Pct, cl });
+    });
+    return { rows, aiW, myW };
+  }, [ar, race]);
+
+  const hist = useMemo(() => {
+    let tot = 0, hW = 0, hT = 0, cov = 0, covT = 0, kM = 0, kT = 0, aW = 0, mW = 0;
+    races.forEach((r) => {
+      const t3 = [r.result?.r1, r.result?.r2, r.result?.r3].filter(Boolean);
+      if (!t3.length) return;
+      tot++;
+      const pk = r.myPicks || {};
+      const hon = Object.entries(pk).find(([, v]) => v === "◎")?.[0];
+      if (hon && t3[0] === hon) hW++;
+      if (hon && t3.includes(hon)) hT++;
+      const all = Object.entries(pk).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
+      cov += t3.filter((h) => all.includes(h)).length; covT += t3.length;
+      const ke = Object.entries(pk).filter(([, v]) => v === "×").map(([k]) => k);
+      kM += t3.filter((h) => ke.includes(h)).length; kT += ke.length;
+      r.horses.forEach((h) => {
+        const a = t3.includes(h.name) ? 1 : 0;
+        if (h.aiTop3Pct != null && h.myTop3Pct != null) {
+          const ae = Math.abs(h.aiTop3Pct / 100 - a), me = Math.abs(h.myTop3Pct / 100 - a);
+          if (ae < me) aW++; else if (me < ae) mW++;
+        }
+      });
+    });
+    return { tot, hW, hT, cov, covT, kM, kT, aW, mW, total: races.length };
+  }, [races]);
+
+  /* ── Add ── */
+  const addRace = () => {
+    if (!newRace.name) return;
+    setRaces((p) => [...p, { id: `${newRace.name}-${newRace.year}`, ...newRace, post: "", weather: "", track: "", trackNote: "", heads: 0, raceNotes: [], horses: [], myPicks: {}, myBets: "", myMemo: "", result: { r1: "", r2: "", r3: "" }, resultMemo: "", reviewHit: "", reviewMiss: "", reviewLesson: "" }]);
+    setSelRace(races.length); setShowAdd(false);
+    setNewRace({ name: "", year: 2026, grade: "GI", date: "", course: "" });
+  };
+  const [showAddH, setShowAddH] = useState(false);
+  const [nh, setNh] = useState({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" });
+  const addH = () => {
+    if (!nh.name) return;
+    upd({ horses: [...race.horses, { ...nh, num: +nh.num || 0, frame: +nh.frame || 0, odds: nh.odds ? +nh.odds : null, sire: "", damSire: "", age: "", weight: "58kg", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null }] });
+    setNh({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" }); setShowAddH(false);
+  };
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [nn, setNn] = useState({ title: "", body: "" });
+  const addNote = () => { if (!nn.title) return; upd({ raceNotes: [...(race.raceNotes || []), { ...nn }] }); setNn({ title: "", body: "" }); setShowAddNote(false); };
+
+  if (!race) return null;
+
+  const detH = detailHorse ? race.horses.find((h) => h.name === detailHorse) : null;
+
+  return (
+    <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", padding: "12px 14px", maxWidth: 820, margin: "0 auto" }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>競馬予想ノート</span>
+        <span style={{ fontSize: 11, color: "#9ca3af" }}>v3.0</span>
+      </div>
+
+      {/* Race Selector */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 8 }}>
+        {races.map((r, i) => (
+          <Btn key={r.id} active={i === selRace} onClick={() => { setSelRace(i); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
+            style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: 12 }}>
+            <span style={{ padding: "1px 6px", borderRadius: 4, background: i === selRace ? "#2563eb" : "#e5e7eb", color: i === selRace ? "#fff" : "#6b7280", fontSize: 10, fontWeight: 800, marginRight: 4 }}>{r.grade}</span>
+            {r.name} {r.year}
+            {r.result?.r1 && <span style={{ marginLeft: 4, fontSize: 10, color: "#16a34a" }}>済</span>}
+          </Btn>
+        ))}
+        <Btn onClick={() => setShowAdd(!showAdd)} style={{ flexShrink: 0, fontSize: 16, padding: "4px 12px" }}>＋</Btn>
+      </div>
+      {showAdd && (
+        <Card style={{ marginBottom: 10, border: "2px solid #2563eb" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>新しいレースを追加</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[{ k: "name", ph: "レース名", w: 120 }, { k: "year", ph: "年", w: 60 }, { k: "grade", ph: "GI", w: 50 }, { k: "date", ph: "2026-04-05", w: 110 }, { k: "course", ph: "阪神11R 芝2000m", w: 180 }].map(({ k, ph, w }) => (
+              <input key={k} placeholder={ph} value={newRace[k]} onChange={(e) => setNewRace({ ...newRace, [k]: e.target.value })}
+                style={{ width: w, padding: "6px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12 }} />
+            ))}
+            <Btn active onClick={addRace}>追加</Btn>
+          </div>
+        </Card>
+      )}
+
+      {/* Race Info */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>{race.name} {race.year}</span>
+        <Badge bg="#dc2626" color="#fff" style={{ fontSize: 12 }}>{race.grade}</Badge>
+      </div>
+      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
+        {race.date}　{race.course}　{race.post && `${race.post}発走`}　{race.heads || race.horses.length}頭
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+        {race.weather && <Badge bg="#e0f2fe" color="#0369a1" border="#7dd3fc">天候 {race.weather}</Badge>}
+        {race.track && <Badge bg="#dcfce7" color="#166534" border="#86efac">馬場 {race.track}</Badge>}
+        {race.trackNote && <Badge bg="#fef9c3" color="#854d0e" border="#fde047">{race.trackNote}</Badge>}
+      </div>
+
+      {/* Tab Bar */}
+      <div style={{ display: "flex", gap: 0, marginBottom: 12, borderBottom: "2px solid #e5e7eb" }}>
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => { setTab(t.key); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
+            style={{ flex: 1, padding: "10px 8px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: "none", border: "none", color: tab === t.key ? "#1d4ed8" : "#6b7280", borderBottom: tab === t.key ? "3px solid #2563eb" : "3px solid transparent", marginBottom: -2, textAlign: "center" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ═════════════════════════════════════════════════ */}
+      {/* TAB 1: 分析・予想                                 */}
+      {/* ═════════════════════════════════════════════════ */}
+      {tab === "analysis" && !detailHorse && (
+        <div>
+          {/* ═══ STEP 1: レース分析を読む ═══ */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Sec>レース分析ノート</Sec>
+            <button onClick={() => setShowNotes(!showNotes)} style={{ fontSize: 11, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginTop: 12 }}>{showNotes ? "▲ 閉じる" : "▼ 開く"}</button>
+          </div>
+          {showNotes && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+              {(race.raceNotes || []).map((n, i) => (
+                <Card key={i} style={{ padding: "10px 12px" }}>
+                  <div style={{ fontWeight: 800, fontSize: 12, color: "#1d4ed8", marginBottom: 6, borderBottom: "1px solid #e5e7eb", paddingBottom: 4 }}>{n.title}</div>
+                  <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.9, whiteSpace: "pre-wrap" }}>{n.body}</div>
+                </Card>
+              ))}
+              <Btn onClick={() => setShowAddNote(!showAddNote)} style={{ fontSize: 11 }}>＋ 分析メモを追加</Btn>
+              {showAddNote && (
+                <Card style={{ border: "2px solid #2563eb" }}>
+                  <input placeholder="タイトル" value={nn.title} onChange={(e) => setNn({ ...nn, title: e.target.value })}
+                    style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, marginBottom: 6, boxSizing: "border-box" }} />
+                  <textarea placeholder="分析内容..." value={nn.body} onChange={(e) => setNn({ ...nn, body: e.target.value })}
+                    style={{ width: "100%", minHeight: 80, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+                  <div style={{ marginTop: 6, textAlign: "right" }}><Btn active onClick={addNote} style={{ fontSize: 11 }}>追加</Btn></div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* ═══ STEP 2: 出走馬を俯瞰する ═══ */}
+          <Sec>出走馬一覧</Sec>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 4 }}>
+            {race.horses.map((h) => {
+              const mk = race.myPicks?.[h.name] || "―";
+              const tc = TC[h.training] || TC["-"];
+              const hasAi = !!h.aiAnalysis;
+              return (
+                <div key={h.name} onClick={() => setDetailHorse(h.name)}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", background: hasAi ? "#fff" : "#fafafa", borderRadius: 8, border: `1px solid ${hasAi ? "#e5e7eb" : "#f1f5f9"}`, cursor: "pointer" }}>
+                  {/* 枠番 */}
+                  <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 700, minWidth: 28, flexShrink: 0 }}>
+                    {h.frame > 0 ? `${h.frame}-${h.num}` : h.num || "-"}
+                  </span>
+                  {/* 印 */}
+                  <MarkBadge m={mk} />
+                  {/* 馬名 + 騎手 */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>{h.name}</span>
+                      {h.training && h.training !== "-" && <Badge bg={tc.bg} color={tc.tx} border={tc.bd} style={{ fontSize: 9 }}>{h.training}</Badge>}
+                      {h.odds && <span style={{ fontSize: 10, color: "#6b7280" }}>{h.odds}倍</span>}
+                      {hasAi && <span style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700 }}>分析あり</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#9ca3af" }}>
+                      {h.jockey && h.jockey !== "-" ? h.jockey : ""}
+                      {h.note && <span style={{ marginLeft: 4, color: "#6b7280" }}>{h.note}</span>}
+                    </div>
+                  </div>
+                  {/* AI% / 自分% */}
+                  <div style={{ textAlign: "right", flexShrink: 0, minWidth: 40 }}>
+                    {h.aiTop3Pct != null && <div style={{ fontSize: 10, color: "#7c3aed", fontWeight: 700 }}>AI {h.aiTop3Pct}%</div>}
+                    {h.myTop3Pct != null && <div style={{ fontSize: 10, color: "#0891b2", fontWeight: 700 }}>自 {h.myTop3Pct}%</div>}
+                  </div>
+                  <span style={{ fontSize: 12, color: "#d1d5db", flexShrink: 0 }}>›</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 6 }}>※ タップで詳細分析を表示。「分析あり」の馬はAI分析が登録済み</div>
+
+          {/* 馬追加 */}
+          <Btn onClick={() => setShowAddH(!showAddH)} style={{ fontSize: 11, width: "100%", marginBottom: 10 }}>＋ 出走馬を追加</Btn>
+          {showAddH && (
+            <Card style={{ marginBottom: 10, border: "2px solid #2563eb" }}>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {[{ k: "name", ph: "馬名", w: 100 }, { k: "num", ph: "番", w: 35 }, { k: "frame", ph: "枠", w: 30 }, { k: "jockey", ph: "騎手", w: 70 }, { k: "odds", ph: "倍率", w: 45 }, { k: "note", ph: "メモ", w: 150 }].map(({ k, ph, w }) => (
+                  <input key={k} placeholder={ph} value={nh[k]} onChange={(e) => setNh({ ...nh, [k]: e.target.value })}
+                    style={{ width: w, padding: "5px 6px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 11 }} />
+                ))}
+                <Btn active onClick={addH} style={{ fontSize: 11 }}>追加</Btn>
+              </div>
+            </Card>
+          )}
+
+          {/* ═══ STEP 3: 予想する ═══ */}
+          <Sec>予想 ─ 印をつける</Sec>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
+            {race.horses.map((h) => {
+              const mk = race.myPicks?.[h.name] || "―";
+              return (
+                <div key={h.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", background: "#fff", borderRadius: 8, border: "1px solid #f1f5f9" }}>
+                  <MarkBadge m={mk} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#111827", flex: 1, minWidth: 0 }}>
+                    {h.num > 0 && <span style={{ color: "#9ca3af", marginRight: 4 }}>{h.num}</span>}
+                    {h.name}
+                  </span>
+                  <div style={{ display: "flex", gap: 2 }}>
+                    {MARKS.map((m) => {
+                      const c = MC[m];
+                      const on = mk === m;
+                      return (
+                        <button key={m} onClick={() => {
+                          const next = { ...race.myPicks };
+                          if (m === "―" || on) { delete next[h.name]; } else {
+                            if (m === "◎" || m === "○") Object.keys(next).forEach((k) => { if (next[k] === m) delete next[k]; });
+                            next[h.name] = m;
+                          }
+                          upd({ myPicks: next });
+                        }}
+                          style={{ width: 26, height: 24, borderRadius: 5, border: on ? `2px solid ${c.bg === "#f9fafb" ? "#9ca3af" : c.bg}` : "1px solid #e5e7eb", background: on ? c.bg : "#fff", color: on ? c.tx : "#d1d5db", fontSize: 12, fontWeight: 900, cursor: "pointer", padding: 0 }}>
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 印サマリー */}
+          {Object.keys(race.myPicks).length > 0 && (
+            <Card style={{ marginBottom: 8, padding: 10 }}>
+              {MARKS.filter((m) => m !== "―").map((m) => {
+                const ns = Object.entries(race.myPicks).filter(([, v]) => v === m).map(([k]) => k);
+                if (!ns.length) return null;
+                return (
+                  <div key={m} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <MarkBadge m={m} />
+                    <span style={{ fontSize: 11, color: "#9ca3af", minWidth: 28 }}>{MARK_LABELS[m]}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{ns.join("、")}</span>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+
+          <textarea value={race.myMemo} onChange={(e) => upd({ myMemo: e.target.value })}
+            placeholder="予想根拠メモ..." style={{ width: "100%", minHeight: 60, padding: 10, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
+          <textarea value={race.myBets || ""} onChange={(e) => upd({ myBets: e.target.value })}
+            placeholder="買い目メモ（例: 三連複 15=4=13 各100円）" style={{ width: "100%", minHeight: 40, padding: 10, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
+        </div>
+      )}
+
+      {/* ── 馬別詳細ビュー（一覧表からタップで遷移）── */}
+      {tab === "analysis" && detailHorse && detH && (
+        <div>
+          <button onClick={() => { setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
+            style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: 700, marginBottom: 8 }}>← 一覧に戻る</button>
+
+          {/* Horse header */}
+          <Card style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <MarkBadge m={race.myPicks?.[detH.name] || "―"} />
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>{detH.name}</span>
+              {detH.odds && <span style={{ fontSize: 13, color: "#6b7280" }}>{detH.odds}倍</span>}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+              {detH.frame > 0 && <Badge bg="#f3f4f6" color="#374151">{detH.frame}枠{detH.num}番</Badge>}
+              {detH.jockey && detH.jockey !== "-" && <Badge bg="#f3f4f6" color="#374151">{detH.jockey}</Badge>}
+              {detH.age && detH.age !== "-" && <Badge bg="#f3f4f6" color="#374151">{detH.age}</Badge>}
+              {detH.weight && <Badge bg="#f3f4f6" color="#374151">{detH.weight}</Badge>}
+              {detH.training && detH.training !== "-" && (() => { const t = TC[detH.training]; return <Badge bg={t.bg} color={t.tx} border={t.bd}>調教{detH.training}</Badge>; })()}
+              {detH.style && detH.style !== "-" && <Badge bg="#fff" color={SC[detH.style] || "#9ca3af"} border={SC[detH.style] || "#d1d5db"}>{detH.style}</Badge>}
+              {detH.sire && detH.sire !== "-" && <Badge bg="#ede9fe" color="#6d28d9">父 {detH.sire}</Badge>}
+              {detH.damSire && detH.damSire !== "-" && <Badge bg="#fce7f3" color="#be185d">母父 {detH.damSire}</Badge>}
+            </div>
+            <PctBar ai={detH.aiTop3Pct} my={detH.myTop3Pct} />
+          </Card>
+
+          {/* AI Analysis */}
+          <Card style={{ marginBottom: 8, background: "#faf5ff", border: "1px solid #e9d5ff" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#7c3aed" }}>AI分析</span>
+              <button onClick={() => setEditingAi(editingAi === detH.name ? null : detH.name)}
+                style={{ fontSize: 11, color: "#7c3aed", background: "none", border: "1px solid #e9d5ff", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontWeight: 700 }}>
+                {editingAi === detH.name ? "閉じる" : detH.aiAnalysis ? "編集" : "＋ 追加"}
+              </button>
+            </div>
+
+            {editingAi === detH.name ? (
+              <div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed" }}>3着以内%</span>
+                  <input type="number" min="0" max="100" value={detH.aiTop3Pct ?? ""} onChange={(e) => updH(detH.name, "aiTop3Pct", e.target.value ? +e.target.value : null)}
+                    style={{ width: 60, padding: "4px 6px", borderRadius: 4, border: "1px solid #d1d5db", fontSize: 12 }} />
+                </div>
+                <input placeholder="プラス材料" value={detH.aiPros || ""} onChange={(e) => updH(detH.name, "aiPros", e.target.value)}
+                  style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, marginBottom: 4, boxSizing: "border-box" }} />
+                <input placeholder="マイナス材料" value={detH.aiCons || ""} onChange={(e) => updH(detH.name, "aiCons", e.target.value)}
+                  style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, marginBottom: 4, boxSizing: "border-box" }} />
+                <textarea placeholder="AI分析を貼り付け..." value={detH.aiAnalysis || ""} onChange={(e) => updH(detH.name, "aiAnalysis", e.target.value)}
+                  style={{ width: "100%", minHeight: 120, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+              </div>
+            ) : detH.aiAnalysis ? (
+              <div>
+                {detH.aiPros && (
+                  <div style={{ background: "#f0fdf4", borderRadius: 6, padding: "6px 10px", marginBottom: 6, border: "1px solid #bbf7d0" }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: "#16a34a", marginBottom: 2 }}>プラス材料</div>
+                    <div style={{ fontSize: 12, color: "#166534", lineHeight: 1.8 }}>{detH.aiPros}</div>
+                  </div>
+                )}
+                {detH.aiCons && (
+                  <div style={{ background: "#fef2f2", borderRadius: 6, padding: "6px 10px", marginBottom: 6, border: "1px solid #fecaca" }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: "#dc2626", marginBottom: 2 }}>マイナス材料</div>
+                    <div style={{ fontSize: 12, color: "#991b1b", lineHeight: 1.8 }}>{detH.aiCons}</div>
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.9, whiteSpace: "pre-wrap" }}>{detH.aiAnalysis}</div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>「＋ 追加」をタップしてAI分析を貼り付け</div>
+            )}
+          </Card>
+
+          {/* My Analysis */}
+          <Card style={{ marginBottom: 8, background: "#ecfeff", border: "1px solid #a5f3fc" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#0891b2" }}>自分の分析</span>
+              <button onClick={() => setEditingHorse(editingHorse === detH.name ? null : detH.name)}
+                style={{ fontSize: 11, color: "#0891b2", background: "none", border: "1px solid #a5f3fc", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontWeight: 700 }}>
+                {editingHorse === detH.name ? "閉じる" : "編集"}
+              </button>
+            </div>
+
+            {editingHorse === detH.name ? (
+              <div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#0891b2" }}>3着以内%</span>
+                  <input type="number" min="0" max="100" value={detH.myTop3Pct ?? ""} onChange={(e) => updH(detH.name, "myTop3Pct", e.target.value ? +e.target.value : null)}
+                    style={{ width: 60, padding: "4px 6px", borderRadius: 4, border: "1px solid #d1d5db", fontSize: 12 }} />
+                </div>
+                <input placeholder="プラス材料" value={detH.myPros || ""} onChange={(e) => updH(detH.name, "myPros", e.target.value)}
+                  style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, marginBottom: 4, boxSizing: "border-box" }} />
+                <input placeholder="マイナス材料" value={detH.myCons || ""} onChange={(e) => updH(detH.name, "myCons", e.target.value)}
+                  style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, marginBottom: 4, boxSizing: "border-box" }} />
+                <textarea placeholder="自分の分析を自由に記入..." value={detH.myAnalysis || ""} onChange={(e) => updH(detH.name, "myAnalysis", e.target.value)}
+                  style={{ width: "100%", minHeight: 80, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+              </div>
+            ) : (
+              detH.myAnalysis || detH.myPros || detH.myCons ? (
+                <div>
+                  {detH.myPros && <div style={{ fontSize: 12, color: "#166534", marginBottom: 2 }}>＋ {detH.myPros}</div>}
+                  {detH.myCons && <div style={{ fontSize: 12, color: "#991b1b", marginBottom: 2 }}>－ {detH.myCons}</div>}
+                  {detH.myAnalysis && <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-wrap", marginTop: 4 }}>{detH.myAnalysis}</div>}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>「編集」をタップして自分の分析を入力</div>
+              )
+            )}
+          </Card>
+
+          {/* 前後の馬へ移動 */}
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            {(() => {
+              const idx = race.horses.findIndex((h) => h.name === detH.name);
+              return (
+                <>
+                  {idx > 0 && <Btn onClick={() => { setDetailHorse(race.horses[idx - 1].name); setEditingHorse(null); setEditingAi(null); }} style={{ flex: 1, fontSize: 11 }}>← {race.horses[idx - 1].name}</Btn>}
+                  {idx < race.horses.length - 1 && <Btn onClick={() => { setDetailHorse(race.horses[idx + 1].name); setEditingHorse(null); setEditingAi(null); }} style={{ flex: 1, fontSize: 11 }}>{race.horses[idx + 1].name} →</Btn>}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════ */}
+      {/* TAB 2: 結果・振り返り                             */}
+      {/* ═════════════════════════════════════════════════ */}
+      {tab === "results" && (
+        <div>
+          <Sec>着順を入力</Sec>
+          <Card style={{ marginBottom: 10 }}>
+            {["r1", "r2", "r3"].map((key, i) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: ["#fbbf24", "#9ca3af", "#b45309"][i], color: "#fff", fontSize: 16, fontWeight: 900 }}>{i + 1}着</div>
+                <select value={race.result?.[key] || ""} onChange={(e) => upd({ result: { ...race.result, [key]: e.target.value } })}
+                  style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13, fontWeight: 600 }}>
+                  <option value="">選択してください</option>
+                  {race.horses.map((h) => <option key={h.name} value={h.name}>{h.num > 0 ? `${h.num} ` : ""}{h.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </Card>
+
+          {/* Result analysis */}
+          {ar && (
+            <>
+              <Sec>予想スコア</Sec>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                {[
+                  { l: "本命", v: ar.honWin ? "1着的中" : ar.honHit ? "3着内" : "ハズレ", c: ar.honWin ? "#16a34a" : ar.honHit ? "#d97706" : "#dc2626", b: ar.honWin ? "#dcfce7" : ar.honHit ? "#fef9c3" : "#fee2e2" },
+                  { l: "3着カバー", v: `${ar.t3Hit}/3`, c: ar.t3Hit >= 2 ? "#16a34a" : "#d97706", b: ar.t3Hit >= 2 ? "#dcfce7" : "#fef9c3" },
+                  { l: "消し精度", v: ar.kMiss > 0 ? `${ar.kMiss}失敗` : "全正解", c: ar.kMiss === 0 ? "#16a34a" : "#dc2626", b: ar.kMiss === 0 ? "#dcfce7" : "#fee2e2" },
+                ].map((s) => (
+                  <Card key={s.l} style={{ flex: "1 1 85px", textAlign: "center", background: s.b, border: "none" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#6b7280" }}>{s.l}</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: s.c, marginTop: 2 }}>{s.v}</div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* 予想 vs 結果 */}
+              <Sec>予想 vs 結果</Sec>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                {race.horses.map((h) => {
+                  const mk = race.myPicks?.[h.name] || "―";
+                  const pos = ar.t3.indexOf(h.name);
+                  const in3 = pos >= 0;
+                  const hit = in3 && mk !== "×" && mk !== "―";
+                  const miss = in3 && mk === "×";
+                  return (
+                    <div key={h.name} style={{
+                      display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 7,
+                      background: miss ? "#fef2f2" : hit ? "#f0fdf4" : in3 ? "#fffbeb" : "#fff",
+                      border: `1px solid ${miss ? "#fca5a5" : hit ? "#86efac" : in3 ? "#fde68a" : "#f3f4f6"}`,
+                    }}>
+                      <MarkBadge m={mk} />
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: in3 ? 800 : 400, color: in3 ? "#111827" : "#9ca3af" }}>{h.name}</span>
+                      {pos >= 0 && <Badge bg={["#fbbf24", "#d1d5db", "#d97706"][pos]} color="#fff" style={{ fontSize: 10 }}>{pos + 1}着</Badge>}
+                      {hit && <span style={{ fontSize: 10, fontWeight: 800, color: "#16a34a" }}>的中</span>}
+                      {miss && <span style={{ fontSize: 10, fontWeight: 800, color: "#dc2626" }}>消し失敗</span>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* AI vs 自分 比較 */}
+              {comp && comp.rows.length > 0 && (
+                <>
+                  <Sec>AI分析 vs 自分の分析 ─ どっちが正確だった？</Sec>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <Card style={{ flex: 1, textAlign: "center", background: comp.aiW > comp.myW ? "#faf5ff" : "#fff", border: comp.aiW > comp.myW ? "2px solid #8b5cf6" : "1px solid #e5e7eb" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed" }}>AI</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "#7c3aed" }}>{comp.aiW}</div>
+                    </Card>
+                    <Card style={{ flex: 1, textAlign: "center", background: comp.myW > comp.aiW ? "#ecfeff" : "#fff", border: comp.myW > comp.aiW ? "2px solid #06b6d4" : "1px solid #e5e7eb" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#0891b2" }}>自分</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "#0891b2" }}>{comp.myW}</div>
+                    </Card>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 12 }}>
+                    {comp.rows.map((r) => (
+                      <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 6, background: r.inT3 ? "#fffbeb" : "#fff", border: `1px solid ${r.inT3 ? "#fde68a" : "#f3f4f6"}` }}>
+                        <span style={{ flex: 1, fontSize: 11, fontWeight: r.inT3 ? 800 : 400, color: r.inT3 ? "#111827" : "#9ca3af" }}>{r.name}</span>
+                        {r.inT3 && <Badge bg="#fbbf24" color="#fff" style={{ fontSize: 9 }}>{r.pos + 1}着</Badge>}
+                        <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600, minWidth: 28, textAlign: "right" }}>{r.aiPct != null ? `${r.aiPct}%` : "-"}</span>
+                        <span style={{ fontSize: 10, color: "#9ca3af" }}>vs</span>
+                        <span style={{ fontSize: 10, color: "#0891b2", fontWeight: 600, minWidth: 28 }}>{r.myPct != null ? `${r.myPct}%` : "-"}</span>
+                        {r.cl === "ai" && <Badge bg="#ede9fe" color="#7c3aed" style={{ fontSize: 9 }}>AI</Badge>}
+                        {r.cl === "my" && <Badge bg="#ecfeff" color="#0891b2" style={{ fontSize: 9 }}>自分</Badge>}
+                        {r.cl === "tie" && <Badge bg="#f3f4f6" color="#9ca3af" style={{ fontSize: 9 }}>同点</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Review memos */}
+          <Sec>振り返りメモ</Sec>
+          <Card style={{ marginBottom: 6, padding: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#16a34a", marginBottom: 4 }}>当たった点</div>
+            <textarea value={race.reviewHit || ""} onChange={(e) => upd({ reviewHit: e.target.value })}
+              placeholder="正しかった分析..." style={{ width: "100%", minHeight: 40, padding: 6, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+          </Card>
+          <Card style={{ marginBottom: 6, padding: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#dc2626", marginBottom: 4 }}>外した点・反省</div>
+            <textarea value={race.reviewMiss || ""} onChange={(e) => upd({ reviewMiss: e.target.value })}
+              placeholder="見落とし、判断ミス..." style={{ width: "100%", minHeight: 40, padding: 6, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+          </Card>
+          <Card style={{ marginBottom: 6, padding: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#2563eb", marginBottom: 4 }}>次回への教訓</div>
+            <textarea value={race.reviewLesson || ""} onChange={(e) => upd({ reviewLesson: e.target.value })}
+              placeholder="次の予想に活かしたいこと..." style={{ width: "100%", minHeight: 40, padding: 6, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+          </Card>
+          <textarea value={race.resultMemo} onChange={(e) => upd({ resultMemo: e.target.value })}
+            placeholder="その他メモ（展開の振り返りなど）..." style={{ width: "100%", minHeight: 50, padding: 10, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 12, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+        </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════ */}
+      {/* TAB 3: 履歴                                       */}
+      {/* ═════════════════════════════════════════════════ */}
+      {tab === "history" && (
+        <div>
+          <Sec>累計成績</Sec>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            {[
+              { l: "予想レース", v: hist.tot, s: `/${hist.total}` },
+              { l: "本命1着率", v: hist.tot ? `${Math.round(hist.hW / hist.tot * 100)}%` : "-", s: `${hist.hW}/${hist.tot}` },
+              { l: "本命3着内", v: hist.tot ? `${Math.round(hist.hT / hist.tot * 100)}%` : "-", s: `${hist.hT}/${hist.tot}` },
+              { l: "3着カバー", v: hist.covT ? `${Math.round(hist.cov / hist.covT * 100)}%` : "-", s: `${hist.cov}/${hist.covT}` },
+              { l: "消し失敗", v: hist.kM, s: `/${hist.kT}頭中` },
+            ].map((s) => (
+              <Card key={s.l} style={{ flex: "1 1 85px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af" }}>{s.l}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#111827", marginTop: 2 }}>{s.v}</div>
+                <div style={{ fontSize: 10, color: "#9ca3af" }}>{s.s}</div>
+              </Card>
+            ))}
+          </div>
+
+          {(hist.aW > 0 || hist.mW > 0) && (
+            <>
+              <Sec>AI vs 自分 通算精度</Sec>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <Card style={{ flex: 1, textAlign: "center", background: hist.aW > hist.mW ? "#faf5ff" : "#fff" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed" }}>AI</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#7c3aed" }}>{hist.aW}</div>
+                </Card>
+                <Card style={{ flex: 1, textAlign: "center", background: hist.mW > hist.aW ? "#ecfeff" : "#fff" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#0891b2" }}>自分</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#0891b2" }}>{hist.mW}</div>
+                </Card>
+              </div>
+            </>
+          )}
+
+          <Sec>レース一覧</Sec>
+          {races.map((r, i) => {
+            const done = !!r.result?.r1;
+            const pk = r.myPicks || {};
+            const hon = Object.entries(pk).find(([, v]) => v === "◎")?.[0];
+            const t3 = [r.result?.r1, r.result?.r2, r.result?.r3].filter(Boolean);
+            return (
+              <Card key={r.id} onClick={() => { setSelRace(i); setTab("analysis"); setDetailHorse(null); }} style={{ cursor: "pointer", padding: "10px 14px", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Badge bg={done ? "#dcfce7" : "#fef9c3"} color={done ? "#166534" : "#854d0e"}>{done ? "結果済" : "未確定"}</Badge>
+                  <span style={{ fontSize: 13, fontWeight: 800 }}>{r.name} {r.year}</span>
+                  <Badge bg="#f3f4f6" color="#6b7280">{r.grade}</Badge>
+                  <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: "auto" }}>{r.date}</span>
+                </div>
+                {done && (
+                  <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 11 }}>
+                    <span style={{ color: "#6b7280" }}>1着 <b style={{ color: "#111827" }}>{r.result.r1}</b></span>
+                    <span style={{ color: "#6b7280" }}>本命 <b style={{ color: hon && t3.includes(hon) ? "#16a34a" : "#dc2626" }}>{hon || "未設定"} {hon && t3.includes(hon) ? "的中" : "ハズレ"}</b></span>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ textAlign: "center", marginTop: 20, padding: 10, fontSize: 10, color: "#d1d5db" }}>
+        競馬予想ノート v3.0 ─ 馬券は自己責任で
+      </div>
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
