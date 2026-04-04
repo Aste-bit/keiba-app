@@ -373,6 +373,202 @@ function App() {
     };
   }, [races, user, saveToSupabase]);
 
+  /* ── Move hooks BEFORE early returns ── */
+  /* These hooks must run on every render, before conditional returns */
+
+  const race = races[selRace] || races[0];
+  const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
+  const updH = (name, field, val) => upd({ horses: (race?.horses || []).map((h) => h.name === name ? { ...h, [field]: val } : h) });
+
+  /* ── Calcs ── */
+  const ar = useMemo(() => {
+    if (!race) return null;
+    const p = race.myPicks || {}, res = race.result || {};
+    const t3 = [res.r1, res.r2, res.r3].filter(Boolean);
+    if (!t3.length) return null;
+    const hon = Object.entries(p).find(([, v]) => v === "◎")?.[0];
+    const picked = Object.entries(p).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
+    const keshi = Object.entries(p).filter(([, v]) => v === "×").map(([k]) => k);
+    return {
+      t3, hon, picked, keshi,
+      honWin: hon && t3[0] === hon, honHit: hon && t3.includes(hon),
+      t3Hit: t3.filter((h) => picked.includes(h)).length,
+      kMiss: t3.filter((h) => keshi.includes(h)).length,
+    };
+  }, [race]);
+
+  const comp = useMemo(() => {
+    if (!ar) return null;
+    let aiW = 0, myW = 0, rows = [];
+    race.horses.forEach((h) => {
+      if (h.aiTop3Pct == null && h.myTop3Pct == null) return;
+      const inT3 = ar.t3.includes(h.name), pos = ar.t3.indexOf(h.name), act = inT3 ? 1 : 0;
+      const aE = h.aiTop3Pct != null ? Math.abs(h.aiTop3Pct / 100 - act) : null;
+      const mE = h.myTop3Pct != null ? Math.abs(h.myTop3Pct / 100 - act) : null;
+      let cl = "tie";
+      if (aE != null && mE != null) { if (aE < mE) { cl = "ai"; aiW++; } else if (mE < aE) { cl = "my"; myW++; } }
+      rows.push({ name: h.name, inT3, pos, aiPct: h.aiTop3Pct, myPct: h.myTop3Pct, cl });
+    });
+    return { rows, aiW, myW };
+  }, [ar, race]);
+
+  const hist = useMemo(() => {
+    let tot = 0, hW = 0, hT = 0, cov = 0, covT = 0, kM = 0, kT = 0, aW = 0, mW = 0;
+    races.forEach((r) => {
+      const t3 = [r.result?.r1, r.result?.r2, r.result?.r3].filter(Boolean);
+      if (!t3.length) return;
+      tot++;
+      const pk = r.myPicks || {};
+      const hon = Object.entries(pk).find(([, v]) => v === "◎")?.[0];
+      if (hon && t3[0] === hon) hW++;
+      if (hon && t3.includes(hon)) hT++;
+      const all = Object.entries(pk).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
+      cov += t3.filter((h) => all.includes(h)).length; covT += t3.length;
+      const ke = Object.entries(pk).filter(([, v]) => v === "×").map(([k]) => k);
+      kM += t3.filter((h) => ke.includes(h)).length; kT += ke.length;
+      r.horses.forEach((h) => {
+        const a = t3.includes(h.name) ? 1 : 0;
+        if (h.aiTop3Pct != null && h.myTop3Pct != null) {
+          const ae = Math.abs(h.aiTop3Pct / 100 - a), me = Math.abs(h.myTop3Pct / 100 - a);
+          if (ae < me) aW++; else if (me < ae) mW++;
+        }
+      });
+    });
+    return { tot, hW, hT, cov, covT, kM, kT, aW, mW, total: races.length };
+  }, [races]);
+
+  /* ── Form state hooks ── */
+  const [showAddH, setShowAddH] = useState(false);
+  const [nh, setNh] = useState({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" });
+
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [nn, setNn] = useState({ title: "", body: "" });
+
+  /* ── Inject CSS animations on mount ── */
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes fadeInUp {
+        from {
+          transform: translateY(16px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes cardEntrance {
+        from {
+          transform: translateY(20px) scale(0.97);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes slideInRight {
+        from {
+          transform: translateX(40px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes fillBar {
+        from {
+          width: 0 !important;
+        }
+      }
+      @keyframes shimmer {
+        0%, 100% {
+          background-position: -1000px 0;
+        }
+        50% {
+          background-position: 1000px 0;
+        }
+      }
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+      @keyframes badgePop {
+        0% {
+          transform: scale(0);
+          opacity: 0;
+        }
+        60% {
+          transform: scale(1.15);
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes tabSlide {
+        from {
+          transform: scaleX(0);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+
+      .keiba-card {
+        transform-origin: center;
+      }
+      .keiba-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      .keiba-btn:active {
+        transform: scale(0.96);
+      }
+
+      .keiba-badge {
+        animation: badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both;
+      }
+
+      .keiba-horse-item {
+        animation: fadeInUp 0.4s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-race-note {
+        animation: cardEntrance 0.5s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-score-card {
+        animation: cardEntrance 0.4s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-training-a {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      .keiba-detail-view {
+        animation: slideInRight 0.35s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-tab-active {
+        animation: fadeInUp 0.3s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-footer {
+        animation: fadeInUp 0.6s cubic-bezier(.25,.46,.45,.94) both;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   /* ── Auth handlers ── */
   const handleSignUp = async () => {
     setAuthError("");
@@ -543,68 +739,6 @@ function App() {
     );
   }
 
-  /* ── Main app (authenticated) ── */
-  const race = races[selRace] || races[0];
-  const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
-  const updH = (name, field, val) => upd({ horses: (race?.horses || []).map((h) => h.name === name ? { ...h, [field]: val } : h) });
-
-  /* ── Calcs ── */
-  const ar = useMemo(() => {
-    if (!race) return null;
-    const p = race.myPicks || {}, res = race.result || {};
-    const t3 = [res.r1, res.r2, res.r3].filter(Boolean);
-    if (!t3.length) return null;
-    const hon = Object.entries(p).find(([, v]) => v === "◎")?.[0];
-    const picked = Object.entries(p).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
-    const keshi = Object.entries(p).filter(([, v]) => v === "×").map(([k]) => k);
-    return {
-      t3, hon, picked, keshi,
-      honWin: hon && t3[0] === hon, honHit: hon && t3.includes(hon),
-      t3Hit: t3.filter((h) => picked.includes(h)).length,
-      kMiss: t3.filter((h) => keshi.includes(h)).length,
-    };
-  }, [race]);
-
-  const comp = useMemo(() => {
-    if (!ar) return null;
-    let aiW = 0, myW = 0, rows = [];
-    race.horses.forEach((h) => {
-      if (h.aiTop3Pct == null && h.myTop3Pct == null) return;
-      const inT3 = ar.t3.includes(h.name), pos = ar.t3.indexOf(h.name), act = inT3 ? 1 : 0;
-      const aE = h.aiTop3Pct != null ? Math.abs(h.aiTop3Pct / 100 - act) : null;
-      const mE = h.myTop3Pct != null ? Math.abs(h.myTop3Pct / 100 - act) : null;
-      let cl = "tie";
-      if (aE != null && mE != null) { if (aE < mE) { cl = "ai"; aiW++; } else if (mE < aE) { cl = "my"; myW++; } }
-      rows.push({ name: h.name, inT3, pos, aiPct: h.aiTop3Pct, myPct: h.myTop3Pct, cl });
-    });
-    return { rows, aiW, myW };
-  }, [ar, race]);
-
-  const hist = useMemo(() => {
-    let tot = 0, hW = 0, hT = 0, cov = 0, covT = 0, kM = 0, kT = 0, aW = 0, mW = 0;
-    races.forEach((r) => {
-      const t3 = [r.result?.r1, r.result?.r2, r.result?.r3].filter(Boolean);
-      if (!t3.length) return;
-      tot++;
-      const pk = r.myPicks || {};
-      const hon = Object.entries(pk).find(([, v]) => v === "◎")?.[0];
-      if (hon && t3[0] === hon) hW++;
-      if (hon && t3.includes(hon)) hT++;
-      const all = Object.entries(pk).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
-      cov += t3.filter((h) => all.includes(h)).length; covT += t3.length;
-      const ke = Object.entries(pk).filter(([, v]) => v === "×").map(([k]) => k);
-      kM += t3.filter((h) => ke.includes(h)).length; kT += ke.length;
-      r.horses.forEach((h) => {
-        const a = t3.includes(h.name) ? 1 : 0;
-        if (h.aiTop3Pct != null && h.myTop3Pct != null) {
-          const ae = Math.abs(h.aiTop3Pct / 100 - a), me = Math.abs(h.myTop3Pct / 100 - a);
-          if (ae < me) aW++; else if (me < ae) mW++;
-        }
-      });
-    });
-    return { tot, hW, hT, cov, covT, kM, kT, aW, mW, total: races.length };
-  }, [races]);
-
   /* ── Add ── */
   const addRace = () => {
     if (!newRace.name) return;
@@ -612,141 +746,12 @@ function App() {
     setSelRace(races.length); setShowAdd(false);
     setNewRace({ name: "", year: 2026, grade: "GI", date: "", course: "" });
   };
-  const [showAddH, setShowAddH] = useState(false);
-  const [nh, setNh] = useState({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" });
   const addH = () => {
     if (!nh.name) return;
     upd({ horses: [...race.horses, { ...nh, num: +nh.num || 0, frame: +nh.frame || 0, odds: nh.odds ? +nh.odds : null, sire: "", damSire: "", age: "", weight: "58kg", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null }] });
     setNh({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" }); setShowAddH(false);
   };
-  const [showAddNote, setShowAddNote] = useState(false);
-  const [nn, setNn] = useState({ title: "", body: "" });
   const addNote = () => { if (!nn.title) return; upd({ raceNotes: [...(race.raceNotes || []), { ...nn }] }); setNn({ title: "", body: "" }); setShowAddNote(false); };
-
-  /* ── Inject CSS animations on mount ── */
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes fadeInUp {
-        from {
-          transform: translateY(16px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      @keyframes cardEntrance {
-        from {
-          transform: translateY(20px) scale(0.97);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0) scale(1);
-          opacity: 1;
-        }
-      }
-      @keyframes slideInRight {
-        from {
-          transform: translateX(40px);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
-      @keyframes fillBar {
-        from {
-          width: 0 !important;
-        }
-      }
-      @keyframes shimmer {
-        0%, 100% {
-          background-position: -1000px 0;
-        }
-        50% {
-          background-position: 1000px 0;
-        }
-      }
-      @keyframes pulse {
-        0%, 100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.7;
-        }
-      }
-      @keyframes badgePop {
-        0% {
-          transform: scale(0);
-          opacity: 0;
-        }
-        60% {
-          transform: scale(1.15);
-        }
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-      @keyframes tabSlide {
-        from {
-          transform: scaleX(0);
-        }
-        to {
-          transform: scaleX(1);
-        }
-      }
-
-      .keiba-card {
-        transform-origin: center;
-      }
-      .keiba-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      }
-
-      .keiba-btn:active {
-        transform: scale(0.96);
-      }
-
-      .keiba-badge {
-        animation: badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both;
-      }
-
-      .keiba-horse-item {
-        animation: fadeInUp 0.4s cubic-bezier(.25,.46,.45,.94) both;
-      }
-
-      .keiba-race-note {
-        animation: cardEntrance 0.5s cubic-bezier(.25,.46,.45,.94) both;
-      }
-
-      .keiba-score-card {
-        animation: cardEntrance 0.4s cubic-bezier(.25,.46,.45,.94) both;
-      }
-
-      .keiba-training-a {
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-
-      .keiba-detail-view {
-        animation: slideInRight 0.35s cubic-bezier(.25,.46,.45,.94) both;
-      }
-
-      .keiba-tab-active {
-        animation: fadeInUp 0.3s cubic-bezier(.25,.46,.45,.94) both;
-      }
-
-      .keiba-footer {
-        animation: fadeInUp 0.6s cubic-bezier(.25,.46,.45,.94) both;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
 
   if (!race) return null;
 
