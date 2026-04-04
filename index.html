@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>競馬予想ノート v3.0</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #f8fafc; -webkit-font-smoothing: antialiased; }
-  button { font-family: inherit; }
-  input, textarea, select { font-family: inherit; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>競馬予想ノート v3.0</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    button { font-family: inherit; }
+    input, textarea, select { font-family: inherit; }
+  </style>
 </head>
 <body>
-<div id="root"></div>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-<script type="text/babel">
+  <div id="root"></div>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script type="text/babel">
 const { useState, useMemo } = React;
 
 /* ══════════════════════════════════════════════════════════════
@@ -348,7 +348,7 @@ function App() {
       </div>
 
       {/* Tab Bar */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 12, borderBottom: "2px solid #e5e7eb" }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 12, borderBottom: "2px solid #e5e7eb", position: "sticky", top: 0, zIndex: 50, background: "#f8fafc", paddingTop: 6 }}>
         {TABS.map((t) => (
           <button key={t.key} onClick={() => { setTab(t.key); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
             style={{ flex: 1, padding: "10px 8px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: "none", border: "none", color: tab === t.key ? "#1d4ed8" : "#6b7280", borderBottom: tab === t.key ? "3px solid #2563eb" : "3px solid transparent", marginBottom: -2, textAlign: "center" }}>
@@ -815,6 +815,6 @@ function App() {
 
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
+  </script>
 </body>
 </html>
