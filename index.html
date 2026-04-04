@@ -15,20 +15,28 @@
   <div id="root"></div>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
   <script type="text/babel">
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useCallback, useRef } = React;
 
 /* ══════════════════════════════════════════════════════════════
-   競馬予想ノート v3.0
-   ─ 一覧性重視 / 分析省略なし / UX大幅改善
+   競馬予想ノート v3.0 + Supabase
+   ─ 一覧性重視 / 分析省略なし / UX大幅改善 / クラウドデータ同期
    設計方針:
      1. 一覧表で全馬を俯瞰 → タップで詳細
      2. レース分析は全文スクロール表示（タブ切り替えしない）
      3. 自分の分析入力はワンタップでアクセス
      4. タブは3つに統合（分析・予想 / 結果・振り返り / 履歴）
      5. 分析テキストは省略しない
+     6. Supabaseで認証 / データ永続化 / 自動同期
    ══════════════════════════════════════════════════════════════ */
+
+const SUPABASE_URL = "https://izadyovmqawytkjsndva.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_oGFr1dFrFNr3cvq9X1jOkg_CEcqzcBN";
+
+// Initialize Supabase client from CDN (window.supabase)
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const INITIAL_RACES = [
   {
@@ -224,7 +232,21 @@ const PctBar = ({ ai, my }) => (
 
 /* ══════════════════════════════════════════ */
 function App() {
-  const [races, setRaces] = useState(INITIAL_RACES);
+  // Auth state
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+  const [authMode, setAuthMode] = useState("login"); // "login" or "signup"
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authConfirmMsg, setAuthConfirmMsg] = useState("");
+
+  // Save state
+  const [saving, setSaving] = useState(false); // false, "saving", "saved"
+  const saveTimeoutRef = useRef(null);
+
+  // App state (only loaded after auth)
+  const [races, setRaces] = useState([]);
   const [selRace, setSelRace] = useState(0);
   const [tab, setTab] = useState("analysis");
   const [showAdd, setShowAdd] = useState(false);
@@ -233,6 +255,365 @@ function App() {
   const [showNotes, setShowNotes] = useState(true);
   const [editingHorse, setEditingHorse] = useState(null);
   const [editingAi, setEditingAi] = useState(null);
+
+  /* ── Check auth on mount ── */
+  useEffect(() => {
+    if (!sb) {
+      setLoading(false);
+      setAuthError("Supabaseクライアントが初期化されていません");
+      return;
+    }
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await sb.auth.getSession();
+        if (error) throw error;
+
+        if (session?.user) {
+          setUser(session.user);
+          await loadUserData(session.user.id);
+        }
+      } catch (err) {
+        console.error("Auth check error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        await loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        setRaces([]);
+      }
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  /* ── Load user data from Supabase ── */
+  const loadUserData = useCallback(async (userId) => {
+    try {
+      const { data, error } = await sb
+        .from("user_data")
+        .select("races")
+        .eq("user_id", userId)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        throw error;
+      }
+
+      if (data?.races && Array.isArray(data.races)) {
+        setRaces(data.races);
+      } else {
+        // First time user: save INITIAL_RACES
+        await saveToSupabase(userId, INITIAL_RACES);
+        setRaces(INITIAL_RACES);
+      }
+    } catch (err) {
+      console.error("Load user data error:", err);
+    }
+  }, []);
+
+  /* ── Save to Supabase (debounced) ── */
+  const saveToSupabase = useCallback(async (userId, racesData) => {
+    if (!sb) return;
+
+    try {
+      const { error } = await sb
+        .from("user_data")
+        .upsert(
+          {
+            user_id: userId,
+            races: racesData,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (error) throw error;
+    } catch (err) {
+      console.error("Save to Supabase error:", err);
+    }
+  }, []);
+
+  /* ── Auto-save with debounce ── */
+  useEffect(() => {
+    if (!user || races.length === 0) return;
+
+    setSaving("saving");
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      await saveToSupabase(user.id, races);
+      setSaving("saved");
+
+      setTimeout(() => setSaving(false), 2000);
+    }, 1500);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [races, user, saveToSupabase]);
+
+  /* ── Auth handlers ── */
+  const handleSignUp = async () => {
+    setAuthError("");
+    setAuthConfirmMsg("");
+    try {
+      const { data, error } = await sb.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+      });
+
+      if (error) throw error;
+
+      if (data?.user && !data.session) {
+        setAuthConfirmMsg("確認メールを送信しました。メールを確認してログインしてください。");
+        setAuthEmail("");
+        setAuthPassword("");
+      } else if (data?.session) {
+        setUser(data.user);
+        await loadUserData(data.user.id);
+      }
+    } catch (err) {
+      setAuthError(err.message || "サインアップに失敗しました");
+    }
+  };
+
+  const handleLogin = async () => {
+    setAuthError("");
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
+
+      if (error) throw error;
+
+      if (data?.user) {
+        setUser(data.user);
+        await loadUserData(data.user.id);
+      }
+    } catch (err) {
+      setAuthError(err.message || "ログインに失敗しました");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await sb.auth.signOut();
+      setUser(null);
+      setRaces([]);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthError("");
+      setAuthConfirmMsg("");
+    } catch (err) {
+      setAuthError("ログアウトに失敗しました");
+    }
+  };
+
+  /* ── Show login/signup form if not authenticated ── */
+  if (loading) {
+    return (
+      <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center", color: "#6b7280" }}>
+          <div style={{ fontSize: 14, marginBottom: 16 }}>読み込み中...</div>
+          <div style={{ animation: "pulse 2s ease-in-out infinite", fontSize: 12, color: "#9ca3af" }}>●</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", padding: "20px 14px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <style>{`
+          @keyframes fadeInUp {
+            from { transform: translateY(16px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+          .keiba-auth-form { animation: fadeInUp 0.4s cubic-bezier(.25,.46,.45,.94); }
+        `}</style>
+        <div style={{ maxWidth: 340, width: "100%" }} className="keiba-auth-form">
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 900, color: "#111827", margin: "0 0 4px" }}>競馬予想ノート</h1>
+            <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>ログインしてデータを同期</p>
+          </div>
+
+          {authConfirmMsg && (
+            <Card style={{ marginBottom: 16, background: "#ecfff3", border: "1px solid #bbf7d0" }}>
+              <div style={{ fontSize: 12, color: "#16a34a", lineHeight: 1.6 }}>{authConfirmMsg}</div>
+            </Card>
+          )}
+
+          {authError && (
+            <Card style={{ marginBottom: 16, background: "#fef2f2", border: "1px solid #fecaca" }}>
+              <div style={{ fontSize: 12, color: "#dc2626", lineHeight: 1.6 }}>{authError}</div>
+            </Card>
+          )}
+
+          <Card style={{ marginBottom: 16 }}>
+            <input
+              type="email"
+              placeholder="メールアドレス"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, marginBottom: 10, boxSizing: "border-box" }}
+            />
+            <input
+              type="password"
+              placeholder="パスワード"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (authMode === "login") handleLogin();
+                  else handleSignUp();
+                }
+              }}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, boxSizing: "border-box" }}
+            />
+          </Card>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={handleLogin}
+              style={{
+                flex: 1,
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "none",
+                background: authMode === "login" ? "#2563eb" : "#f3f4f6",
+                color: authMode === "login" ? "#fff" : "#6b7280",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+              onMouseDown={() => setAuthMode("login")}
+            >
+              ログイン
+            </button>
+            <button
+              onClick={handleSignUp}
+              style={{
+                flex: 1,
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "none",
+                background: authMode === "signup" ? "#2563eb" : "#f3f4f6",
+                color: authMode === "signup" ? "#fff" : "#6b7280",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+              onMouseDown={() => setAuthMode("signup")}
+            >
+              新規登録
+            </button>
+          </div>
+
+          <div style={{ fontSize: 10, color: "#9ca3af", textAlign: "center" }}>
+            個人の馬券予想を安全に保存・管理
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Main app (authenticated) ── */
+  const race = races[selRace];
+  const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
+  const updH = (name, field, val) => upd({ horses: race.horses.map((h) => h.name === name ? { ...h, [field]: val } : h) });
+
+  /* ── Calcs ── */
+  const ar = useMemo(() => {
+    if (!race) return null;
+    const p = race.myPicks || {}, res = race.result || {};
+    const t3 = [res.r1, res.r2, res.r3].filter(Boolean);
+    if (!t3.length) return null;
+    const hon = Object.entries(p).find(([, v]) => v === "◎")?.[0];
+    const picked = Object.entries(p).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
+    const keshi = Object.entries(p).filter(([, v]) => v === "×").map(([k]) => k);
+    return {
+      t3, hon, picked, keshi,
+      honWin: hon && t3[0] === hon, honHit: hon && t3.includes(hon),
+      t3Hit: t3.filter((h) => picked.includes(h)).length,
+      kMiss: t3.filter((h) => keshi.includes(h)).length,
+    };
+  }, [race]);
+
+  const comp = useMemo(() => {
+    if (!ar) return null;
+    let aiW = 0, myW = 0, rows = [];
+    race.horses.forEach((h) => {
+      if (h.aiTop3Pct == null && h.myTop3Pct == null) return;
+      const inT3 = ar.t3.includes(h.name), pos = ar.t3.indexOf(h.name), act = inT3 ? 1 : 0;
+      const aE = h.aiTop3Pct != null ? Math.abs(h.aiTop3Pct / 100 - act) : null;
+      const mE = h.myTop3Pct != null ? Math.abs(h.myTop3Pct / 100 - act) : null;
+      let cl = "tie";
+      if (aE != null && mE != null) { if (aE < mE) { cl = "ai"; aiW++; } else if (mE < aE) { cl = "my"; myW++; } }
+      rows.push({ name: h.name, inT3, pos, aiPct: h.aiTop3Pct, myPct: h.myTop3Pct, cl });
+    });
+    return { rows, aiW, myW };
+  }, [ar, race]);
+
+  const hist = useMemo(() => {
+    let tot = 0, hW = 0, hT = 0, cov = 0, covT = 0, kM = 0, kT = 0, aW = 0, mW = 0;
+    races.forEach((r) => {
+      const t3 = [r.result?.r1, r.result?.r2, r.result?.r3].filter(Boolean);
+      if (!t3.length) return;
+      tot++;
+      const pk = r.myPicks || {};
+      const hon = Object.entries(pk).find(([, v]) => v === "◎")?.[0];
+      if (hon && t3[0] === hon) hW++;
+      if (hon && t3.includes(hon)) hT++;
+      const all = Object.entries(pk).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
+      cov += t3.filter((h) => all.includes(h)).length; covT += t3.length;
+      const ke = Object.entries(pk).filter(([, v]) => v === "×").map(([k]) => k);
+      kM += t3.filter((h) => ke.includes(h)).length; kT += ke.length;
+      r.horses.forEach((h) => {
+        const a = t3.includes(h.name) ? 1 : 0;
+        if (h.aiTop3Pct != null && h.myTop3Pct != null) {
+          const ae = Math.abs(h.aiTop3Pct / 100 - a), me = Math.abs(h.myTop3Pct / 100 - a);
+          if (ae < me) aW++; else if (me < ae) mW++;
+        }
+      });
+    });
+    return { tot, hW, hT, cov, covT, kM, kT, aW, mW, total: races.length };
+  }, [races]);
+
+  /* ── Add ── */
+  const addRace = () => {
+    if (!newRace.name) return;
+    setRaces((p) => [...p, { id: `${newRace.name}-${newRace.year}`, ...newRace, post: "", weather: "", track: "", trackNote: "", heads: 0, raceNotes: [], horses: [], myPicks: {}, myBets: "", myMemo: "", result: { r1: "", r2: "", r3: "" }, resultMemo: "", reviewHit: "", reviewMiss: "", reviewLesson: "" }]);
+    setSelRace(races.length); setShowAdd(false);
+    setNewRace({ name: "", year: 2026, grade: "GI", date: "", course: "" });
+  };
+  const [showAddH, setShowAddH] = useState(false);
+  const [nh, setNh] = useState({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" });
+  const addH = () => {
+    if (!nh.name) return;
+    upd({ horses: [...race.horses, { ...nh, num: +nh.num || 0, frame: +nh.frame || 0, odds: nh.odds ? +nh.odds : null, sire: "", damSire: "", age: "", weight: "58kg", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null }] });
+    setNh({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" }); setShowAddH(false);
+  };
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [nn, setNn] = useState({ title: "", body: "" });
+  const addNote = () => { if (!nn.title) return; upd({ raceNotes: [...(race.raceNotes || []), { ...nn }] }); setNn({ title: "", body: "" }); setShowAddNote(false); };
 
   /* ── Inject CSS animations on mount ── */
   useEffect(() => {
@@ -359,85 +740,6 @@ function App() {
     return () => document.head.removeChild(style);
   }, []);
 
-  const race = races[selRace];
-  const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
-  const updH = (name, field, val) => upd({ horses: race.horses.map((h) => h.name === name ? { ...h, [field]: val } : h) });
-
-  /* ── Calcs ── */
-  const ar = useMemo(() => {
-    if (!race) return null;
-    const p = race.myPicks || {}, res = race.result || {};
-    const t3 = [res.r1, res.r2, res.r3].filter(Boolean);
-    if (!t3.length) return null;
-    const hon = Object.entries(p).find(([, v]) => v === "◎")?.[0];
-    const picked = Object.entries(p).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
-    const keshi = Object.entries(p).filter(([, v]) => v === "×").map(([k]) => k);
-    return {
-      t3, hon, picked, keshi,
-      honWin: hon && t3[0] === hon, honHit: hon && t3.includes(hon),
-      t3Hit: t3.filter((h) => picked.includes(h)).length,
-      kMiss: t3.filter((h) => keshi.includes(h)).length,
-    };
-  }, [race]);
-
-  const comp = useMemo(() => {
-    if (!ar) return null;
-    let aiW = 0, myW = 0, rows = [];
-    race.horses.forEach((h) => {
-      if (h.aiTop3Pct == null && h.myTop3Pct == null) return;
-      const inT3 = ar.t3.includes(h.name), pos = ar.t3.indexOf(h.name), act = inT3 ? 1 : 0;
-      const aE = h.aiTop3Pct != null ? Math.abs(h.aiTop3Pct / 100 - act) : null;
-      const mE = h.myTop3Pct != null ? Math.abs(h.myTop3Pct / 100 - act) : null;
-      let cl = "tie";
-      if (aE != null && mE != null) { if (aE < mE) { cl = "ai"; aiW++; } else if (mE < aE) { cl = "my"; myW++; } }
-      rows.push({ name: h.name, inT3, pos, aiPct: h.aiTop3Pct, myPct: h.myTop3Pct, cl });
-    });
-    return { rows, aiW, myW };
-  }, [ar, race]);
-
-  const hist = useMemo(() => {
-    let tot = 0, hW = 0, hT = 0, cov = 0, covT = 0, kM = 0, kT = 0, aW = 0, mW = 0;
-    races.forEach((r) => {
-      const t3 = [r.result?.r1, r.result?.r2, r.result?.r3].filter(Boolean);
-      if (!t3.length) return;
-      tot++;
-      const pk = r.myPicks || {};
-      const hon = Object.entries(pk).find(([, v]) => v === "◎")?.[0];
-      if (hon && t3[0] === hon) hW++;
-      if (hon && t3.includes(hon)) hT++;
-      const all = Object.entries(pk).filter(([, v]) => ["◎", "○", "▲", "△"].includes(v)).map(([k]) => k);
-      cov += t3.filter((h) => all.includes(h)).length; covT += t3.length;
-      const ke = Object.entries(pk).filter(([, v]) => v === "×").map(([k]) => k);
-      kM += t3.filter((h) => ke.includes(h)).length; kT += ke.length;
-      r.horses.forEach((h) => {
-        const a = t3.includes(h.name) ? 1 : 0;
-        if (h.aiTop3Pct != null && h.myTop3Pct != null) {
-          const ae = Math.abs(h.aiTop3Pct / 100 - a), me = Math.abs(h.myTop3Pct / 100 - a);
-          if (ae < me) aW++; else if (me < ae) mW++;
-        }
-      });
-    });
-    return { tot, hW, hT, cov, covT, kM, kT, aW, mW, total: races.length };
-  }, [races]);
-
-  /* ── Add ── */
-  const addRace = () => {
-    if (!newRace.name) return;
-    setRaces((p) => [...p, { id: `${newRace.name}-${newRace.year}`, ...newRace, post: "", weather: "", track: "", trackNote: "", heads: 0, raceNotes: [], horses: [], myPicks: {}, myBets: "", myMemo: "", result: { r1: "", r2: "", r3: "" }, resultMemo: "", reviewHit: "", reviewMiss: "", reviewLesson: "" }]);
-    setSelRace(races.length); setShowAdd(false);
-    setNewRace({ name: "", year: 2026, grade: "GI", date: "", course: "" });
-  };
-  const [showAddH, setShowAddH] = useState(false);
-  const [nh, setNh] = useState({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" });
-  const addH = () => {
-    if (!nh.name) return;
-    upd({ horses: [...race.horses, { ...nh, num: +nh.num || 0, frame: +nh.frame || 0, odds: nh.odds ? +nh.odds : null, sire: "", damSire: "", age: "", weight: "58kg", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null }] });
-    setNh({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" }); setShowAddH(false);
-  };
-  const [showAddNote, setShowAddNote] = useState(false);
-  const [nn, setNn] = useState({ title: "", body: "" });
-  const addNote = () => { if (!nn.title) return; upd({ raceNotes: [...(race.raceNotes || []), { ...nn }] }); setNn({ title: "", body: "" }); setShowAddNote(false); };
-
   if (!race) return null;
 
   const detH = detailHorse ? race.horses.find((h) => h.name === detailHorse) : null;
@@ -449,9 +751,30 @@ function App() {
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(248,250,252,0.85)", backdropFilter: "blur(12px)", paddingTop: 4, paddingBottom: 0, marginLeft: -14, marginRight: -14, paddingLeft: 14, paddingRight: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>競馬予想ノート</span>
-        <span style={{ fontSize: 11, color: "#9ca3af" }}>v3.0</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>競馬予想ノート</span>
+          <span style={{ fontSize: 11, color: "#9ca3af" }}>v3.0</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {saving === "saving" && (
+            <span style={{ fontSize: 10, color: "#6b7280", animation: "pulse 1.5s ease-in-out infinite" }}>保存中...</span>
+          )}
+          {saving === "saved" && (
+            <span style={{ fontSize: 10, color: "#16a34a", animation: "fadeInUp 0.3s ease" }}>保存済み ✓</span>
+          )}
+          {user && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+              <span style={{ color: "#6b7280" }}>{user.email?.split("@")?.[0] || "User"}</span>
+              <button
+                onClick={handleLogout}
+                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
+              >
+                ログアウト
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Race Selector */}
