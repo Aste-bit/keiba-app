@@ -244,9 +244,10 @@ function App() {
   // Save state
   const [saving, setSaving] = useState(false); // false, "saving", "saved"
   const saveTimeoutRef = useRef(null);
+  const dataLoadedRef = useRef(false); // prevent auto-save before data is loaded from DB
 
-  // App state (only loaded after auth)
-  const [races, setRaces] = useState([]);
+  // App state (start with INITIAL_RACES, overwrite after auth)
+  const [races, setRaces] = useState(INITIAL_RACES);
   const [selRace, setSelRace] = useState(0);
   const [tab, setTab] = useState("analysis");
   const [showAdd, setShowAdd] = useState(false);
@@ -280,7 +281,7 @@ function App() {
         }
       } else {
         setUser(null);
-        setRaces([]);
+        setRaces(INITIAL_RACES);
       }
       if (!initialCheckDone) {
         initialCheckDone = true;
@@ -315,13 +316,14 @@ function App() {
         throw error;
       }
 
-      if (data?.races && Array.isArray(data.races)) {
+      if (data?.races && Array.isArray(data.races) && data.races.length > 0) {
         setRaces(data.races);
       } else {
         // First time user: save INITIAL_RACES
         await saveToSupabase(userId, INITIAL_RACES);
         setRaces(INITIAL_RACES);
       }
+      dataLoadedRef.current = true;
     } catch (err) {
       console.error("Load user data error:", err);
     }
@@ -351,7 +353,7 @@ function App() {
 
   /* ── Auto-save with debounce ── */
   useEffect(() => {
-    if (!user || races.length === 0) return;
+    if (!user || !dataLoadedRef.current) return;
 
     setSaving("saving");
 
@@ -419,7 +421,7 @@ function App() {
     try {
       await sb.auth.signOut();
       setUser(null);
-      setRaces([]);
+      setRaces(INITIAL_RACES);
       setAuthEmail("");
       setAuthPassword("");
       setAuthError("");
@@ -542,19 +544,10 @@ function App() {
   }
 
   /* ── Main app (authenticated) ── */
-  if (!races || races.length === 0) {
-    return (
-      <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center", color: "#6b7280" }}>
-          <div style={{ fontSize: 14, marginBottom: 16 }}>データを読み込み中...</div>
-          <div style={{ animation: "pulse 2s ease-in-out infinite", fontSize: 12, color: "#9ca3af" }}>●</div>
-        </div>
-      </div>
-    );
-  }
   const race = races[selRace] || races[0];
+  if (!race) return null;
   const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
-  const updH = (name, field, val) => upd({ horses: race?.horses?.map((h) => h.name === name ? { ...h, [field]: val } : h) || [] });
+  const updH = (name, field, val) => upd({ horses: (race.horses || []).map((h) => h.name === name ? { ...h, [field]: val } : h) });
 
   /* ── Calcs ── */
   const ar = useMemo(() => {
