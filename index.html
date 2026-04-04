@@ -545,9 +545,8 @@ function App() {
 
   /* ── Main app (authenticated) ── */
   const race = races[selRace] || races[0];
-  if (!race) return null;
   const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
-  const updH = (name, field, val) => upd({ horses: (race.horses || []).map((h) => h.name === name ? { ...h, [field]: val } : h) });
+  const updH = (name, field, val) => upd({ horses: (race?.horses || []).map((h) => h.name === name ? { ...h, [field]: val } : h) });
 
   /* ── Calcs ── */
   const ar = useMemo(() => {
