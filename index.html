@@ -17,7 +17,7 @@
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
   <script type="text/babel">
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect } = React;
 
 /* ══════════════════════════════════════════════════════════════
    競馬予想ノート v3.0
@@ -109,7 +109,7 @@ const INITIAL_RACES = [
         training: "B", style: "先行", age: "4歳", weight: "58kg",
         sire: "キタサンブラック", damSire: "-",
         note: "芝2000m全て圏内。穴馬最有力",
-        aiAnalysis: "【穴馬最上位評価 ─ 3着以内の可能性: 約20%】\n\n4歳牡馬。栗東・大久保龍志厩舎。キャリア8戦と浅いが直近5走で3勝。\n\n前走: GII京都記念3着（重賞初挑戦でいきなり3着に食い込む。1着ジューンテイク、2着エリキングに次ぐ好走。GIIで通用する力を既に証明済み）。\n\n【距離適性】芝2000mでは全て馬券圏内。この距離での信頼度はメンバー中トップクラス。\n【コース適性】阪神コース4戦3度馬券圏内。舞台との相性が抜群に良い。\n\n【血統的裏付け】父キタサンブラックは阪神芝2000mで勝率16.1%・複勝率38.7%の好相性。クロワデュノールと同じ父系で、この舞台への血統的裏付けがしっかりある。\n\n4歳馬であることもプラス。GI昇格後の大阪杯で優勝馬は4歳と5歳に限定されており、年齢条件に合致。成長途上でまだ上積みが見込める。先行力と持続力が武器で、阪神内回りの適性にも合う。\n\n【リスク】GI未経験で相手が一気に強化。池添謙一はベテランで経験豊富だが近年のGI勝ちは少なく、ルメール・武豊・川田レベルとの騎手力差はある。キャリア8戦で経験が浅く、GIの厳しい流れに戸惑う可能性。調教はカリカリした面や頭の高さが目につくとの指摘。\n\n【馬券的バリュー】レーベンスティール（9.2倍）より人気薄であれば期待値が高い可能性がある。三連複のヒモとしてはタガノデュードより明確に優先して入れたい馬。馬連・ワイドで上位馬との組み合わせも検討の余地あり。",
+        aiAnalysis: "【穴馬最上位評価 ─ 3着以内の可能性: 約20%】\n\n4歳牡馬。栗東・大久保龍志厩舎。キャリア8戦と浅いが直近5走で3勝。\n\n前走: GII京都記念3着（重賞初挑戦でいきなり3着に食い込む。1着ジューンテイク、2着エリキングに次ぐ好走。GIIで通用する力を既に証明済）。\n\n【距離適性】芝2000mでは全て馬券圏内。この距離での信頼度はメンバー中トップクラス。\n【コース適性】阪神コース4戦3度馬券圏内。舞台との相性が抜群に良い。\n\n【血統的裏付け】父キタサンブラックは阪神芝2000mで勝率16.1%・複勝率38.7%の好相性。クロワデュノールと同じ父系で、この舞台への血統的裏付けがしっかりある。\n\n4歳馬であることもプラス。GI昇格後の大阪杯で優勝馬は4歳と5歳に限定されており、年齢条件に合致。成長途上でまだ上積みが見込める。先行力と持続力が武器で、阪神内回りの適性にも合う。\n\n【リスク】GI未経験で相手が一気に強化。池添謙一はベテランで経験豊富だが近年のGI勝ちは少なく、ルメール・武豊・川田レベルとの騎手力差はある。キャリア8戦で経験が浅く、GIの厳しい流れに戸惑う可能性。調教はカリカリした面や頭の高さが目につくとの指摘。\n\n【馬券的バリュー】レーベンスティール（9.2倍）より人気薄であれば期待値が高い可能性がある。三連複のヒモとしてはタガノデュードより明確に優先して入れたい馬。馬連・ワイドで上位馬との組み合わせも検討の余地あり。",
         aiPros: "芝2000m全て馬券圏内（距離適性トップ）/ 阪神4戦3度圏内（コース適性◎）/ 父キタサンブラック産駒（阪神2000m複勝率38.7%）/ 前走GII京都記念3着（GII好走済）/ 4歳の上積み / 先行力と持続力",
         aiCons: "GI未経験（初のGIで相手が一気に強化）/ 池添謙一の近年GI実績の少なさ / キャリア8戦の経験の浅さ / 調教でカリカリした面の指摘",
         aiTop3Pct: 20,
@@ -166,22 +166,40 @@ const TABS = [
   { key: "history", label: "履歴" },
 ];
 
+/* ── CountUp Component for animated numbers ── */
+function CountUp({ to }) {
+  const [num, setNum] = useState(0);
+  useEffect(() => {
+    if (!to) return;
+    let start = null;
+    const animate = (timestamp) => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / 800, 1);
+      setNum(Math.floor(to * progress));
+      if (progress < 1) requestAnimationFrame(animate);
+      else setNum(to);
+    };
+    requestAnimationFrame(animate);
+  }, [to]);
+  return <span>{num}</span>;
+}
+
 /* ── UI primitives ── */
 const Badge = ({ children, bg, color, border, style: s }) => (
   <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: bg, color, border: border ? `1.5px solid ${border}` : "none", ...s }}>{children}</span>
 );
 const Card = ({ children, style: s, onClick }) => (
-  <div onClick={onClick} style={{ background: "#fff", borderRadius: 10, border: "1px solid #e5e7eb", padding: 14, ...s }}>{children}</div>
+  <div onClick={onClick} style={{ background: "#fff", borderRadius: 10, border: "1px solid #e5e7eb", padding: 14, transition: "transform 0.2s ease, box-shadow 0.2s ease", cursor: onClick ? "pointer" : "default", ...s }} className="keiba-card">{children}</div>
 );
 const Btn = ({ children, active, onClick, style: s }) => (
-  <button onClick={onClick} style={{ padding: "6px 14px", borderRadius: 8, border: active ? "2px solid #2563eb" : "1px solid #d1d5db", background: active ? "#eff6ff" : "#fff", color: active ? "#1d4ed8" : "#374151", fontWeight: 700, fontSize: 13, cursor: "pointer", ...s }}>{children}</button>
+  <button onClick={onClick} style={{ padding: "6px 14px", borderRadius: 8, border: active ? "2px solid #2563eb" : "1px solid #d1d5db", background: active ? "#eff6ff" : "#fff", color: active ? "#1d4ed8" : "#374151", fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.15s ease", ...s }} className="keiba-btn">{children}</button>
 );
 const Sec = ({ children }) => (
   <h3 style={{ fontSize: 13, fontWeight: 800, color: "#374151", margin: "18px 0 8px", borderBottom: "2px solid #111827", paddingBottom: 4 }}>{children}</h3>
 );
 const MarkBadge = ({ m }) => {
   const c = MC[m] || MC["―"];
-  return <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 5, background: c.bg, color: c.tx, fontSize: 13, fontWeight: 900, flexShrink: 0, border: m === "―" ? "1px solid #e5e7eb" : "none" }}>{m}</span>;
+  return <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 5, background: c.bg, color: c.tx, fontSize: 13, fontWeight: 900, flexShrink: 0, border: m === "―" ? "1px solid #e5e7eb" : "none" }} className="keiba-badge">{m}</span>;
 };
 
 /* ── PctBar ── */
@@ -190,14 +208,14 @@ const PctBar = ({ ai, my }) => (
     <div style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
       <span style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700, minWidth: 16 }}>AI</span>
       <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ width: `${Math.min(ai ?? 0, 100)}%`, height: "100%", background: "#8b5cf6", borderRadius: 4 }} />
+        <div style={{ width: `${Math.min(ai ?? 0, 100)}%`, height: "100%", background: "#8b5cf6", borderRadius: 4, animation: "fillBar 0.8s cubic-bezier(.25,.46,.45,.94) 0.2s both" }} />
       </div>
       <span style={{ fontSize: 10, fontWeight: 800, color: "#7c3aed", minWidth: 28, textAlign: "right" }}>{ai != null ? `${ai}%` : "-"}</span>
     </div>
     <div style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
       <span style={{ fontSize: 9, color: "#0891b2", fontWeight: 700, minWidth: 16 }}>自分</span>
       <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ width: `${Math.min(my ?? 0, 100)}%`, height: "100%", background: "#06b6d4", borderRadius: 4 }} />
+        <div style={{ width: `${Math.min(my ?? 0, 100)}%`, height: "100%", background: "#06b6d4", borderRadius: 4, animation: "fillBar 0.8s cubic-bezier(.25,.46,.45,.94) 0.2s both" }} />
       </div>
       <span style={{ fontSize: 10, fontWeight: 800, color: "#0891b2", minWidth: 28, textAlign: "right" }}>{my != null ? `${my}%` : "-"}</span>
     </div>
@@ -211,10 +229,135 @@ function App() {
   const [tab, setTab] = useState("analysis");
   const [showAdd, setShowAdd] = useState(false);
   const [newRace, setNewRace] = useState({ name: "", year: 2026, grade: "GI", date: "", course: "" });
-  const [detailHorse, setDetailHorse] = useState(null); // horse name or null
+  const [detailHorse, setDetailHorse] = useState(null);
   const [showNotes, setShowNotes] = useState(true);
-  const [editingHorse, setEditingHorse] = useState(null); // horse name for editing my analysis
-  const [editingAi, setEditingAi] = useState(null); // horse name for editing AI analysis
+  const [editingHorse, setEditingHorse] = useState(null);
+  const [editingAi, setEditingAi] = useState(null);
+
+  /* ── Inject CSS animations on mount ── */
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes fadeInUp {
+        from {
+          transform: translateY(16px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes cardEntrance {
+        from {
+          transform: translateY(20px) scale(0.97);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes slideInRight {
+        from {
+          transform: translateX(40px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes fillBar {
+        from {
+          width: 0 !important;
+        }
+      }
+      @keyframes shimmer {
+        0%, 100% {
+          background-position: -1000px 0;
+        }
+        50% {
+          background-position: 1000px 0;
+        }
+      }
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+      @keyframes badgePop {
+        0% {
+          transform: scale(0);
+          opacity: 0;
+        }
+        60% {
+          transform: scale(1.15);
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes tabSlide {
+        from {
+          transform: scaleX(0);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+
+      .keiba-card {
+        transform-origin: center;
+      }
+      .keiba-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      .keiba-btn:active {
+        transform: scale(0.96);
+      }
+
+      .keiba-badge {
+        animation: badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both;
+      }
+
+      .keiba-horse-item {
+        animation: fadeInUp 0.4s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-race-note {
+        animation: cardEntrance 0.5s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-score-card {
+        animation: cardEntrance 0.4s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-training-a {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      .keiba-detail-view {
+        animation: slideInRight 0.35s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-tab-active {
+        animation: fadeInUp 0.3s cubic-bezier(.25,.46,.45,.94) both;
+      }
+
+      .keiba-footer {
+        animation: fadeInUp 0.6s cubic-bezier(.25,.46,.45,.94) both;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
 
   const race = races[selRace];
   const upd = (patch) => setRaces((p) => p.map((r, i) => (i === selRace ? { ...r, ...patch } : r)));
@@ -303,7 +446,7 @@ function App() {
     <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", padding: "12px 14px", maxWidth: 820, margin: "0 auto" }}>
 
       {/* ── Sticky Header ── */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#f8fafc", paddingTop: 4, paddingBottom: 0, marginLeft: -14, marginRight: -14, paddingLeft: 14, paddingRight: 14 }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(248,250,252,0.85)", backdropFilter: "blur(12px)", paddingTop: 4, paddingBottom: 0, marginLeft: -14, marginRight: -14, paddingLeft: 14, paddingRight: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -339,7 +482,7 @@ function App() {
       {/* Race Info */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
         <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>{race.name} {race.year}</span>
-        <Badge bg="#dc2626" color="#fff" style={{ fontSize: 12 }}>{race.grade}</Badge>
+        <Badge bg="linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)" color="#fff" style={{ fontSize: 12 }}>{race.grade}</Badge>
       </div>
       <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
         {race.date}　{race.course}　{race.post && `${race.post}発走`}　{race.heads || race.horses.length}頭
@@ -354,7 +497,7 @@ function App() {
       <div style={{ display: "flex", gap: 0, marginBottom: 0, borderBottom: "2px solid #e5e7eb" }}>
         {TABS.map((t) => (
           <button key={t.key} onClick={() => { setTab(t.key); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
-            style={{ flex: 1, padding: "10px 8px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: "none", border: "none", color: tab === t.key ? "#1d4ed8" : "#6b7280", borderBottom: tab === t.key ? "3px solid #2563eb" : "3px solid transparent", marginBottom: -2, textAlign: "center" }}>
+            style={{ flex: 1, padding: "10px 8px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: "none", border: "none", color: tab === t.key ? "#1d4ed8" : "#6b7280", borderBottom: tab === t.key ? "3px solid #2563eb" : "3px solid transparent", marginBottom: -2, textAlign: "center", transition: "all 0.3s cubic-bezier(.25,.46,.45,.94)" }}>
             {t.label}
           </button>
         ))}
@@ -366,7 +509,7 @@ function App() {
       {/* TAB 1: 分析・予想                                 */}
       {/* ═════════════════════════════════════════════════ */}
       {tab === "analysis" && !detailHorse && (
-        <div>
+        <div className="keiba-tab-active">
           {/* ═══ STEP 1: レース分析を読む ═══ */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Sec>レース分析ノート</Sec>
@@ -375,7 +518,7 @@ function App() {
           {showNotes && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
               {(race.raceNotes || []).map((n, i) => (
-                <Card key={i} style={{ padding: "10px 12px" }}>
+                <Card key={i} style={{ padding: "10px 12px" }} className="keiba-race-note">
                   <div style={{ fontWeight: 800, fontSize: 12, color: "#1d4ed8", marginBottom: 6, borderBottom: "1px solid #e5e7eb", paddingBottom: 4 }}>{n.title}</div>
                   <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.9, whiteSpace: "pre-wrap" }}>{n.body}</div>
                 </Card>
@@ -396,13 +539,13 @@ function App() {
           {/* ═══ STEP 2: 出走馬を俯瞰する ═══ */}
           <Sec>出走馬一覧</Sec>
           <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 4 }}>
-            {race.horses.map((h) => {
+            {race.horses.map((h, idx) => {
               const mk = race.myPicks?.[h.name] || "―";
               const tc = TC[h.training] || TC["-"];
               const hasAi = !!h.aiAnalysis;
               return (
                 <div key={h.name} onClick={() => setDetailHorse(h.name)}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", background: hasAi ? "#fff" : "#fafafa", borderRadius: 8, border: `1px solid ${hasAi ? "#e5e7eb" : "#f1f5f9"}`, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", background: hasAi ? "#fff" : "#fafafa", borderRadius: 8, border: `1px solid ${hasAi ? "#e5e7eb" : "#f1f5f9"}`, cursor: "pointer", animationDelay: `${idx * 0.04}s` }} className="keiba-horse-item">
                   {/* 枠番 */}
                   <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 700, minWidth: 28, flexShrink: 0 }}>
                     {h.frame > 0 ? `${h.frame}-${h.num}` : h.num || "-"}
@@ -413,7 +556,7 @@ function App() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>{h.name}</span>
-                      {h.training && h.training !== "-" && <Badge bg={tc.bg} color={tc.tx} border={tc.bd} style={{ fontSize: 9 }}>{h.training}</Badge>}
+                      {h.training && h.training !== "-" && <Badge bg={tc.bg} color={tc.tx} border={tc.bd} style={{ fontSize: 9, ...(h.training === "A" ? {} : {}) }} className={h.training === "A" ? "keiba-training-a" : ""}>{h.training}</Badge>}
                       {h.odds && <span style={{ fontSize: 10, color: "#6b7280" }}>{h.odds}倍</span>}
                       {hasAi && <span style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700 }}>分析あり</span>}
                     </div>
@@ -510,7 +653,7 @@ function App() {
 
       {/* ── 馬別詳細ビュー（一覧表からタップで遷移）── */}
       {tab === "analysis" && detailHorse && detH && (
-        <div>
+        <div className="keiba-detail-view">
           <button onClick={() => { setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
             style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: 700, marginBottom: 8 }}>← 一覧に戻る</button>
 
@@ -606,8 +749,8 @@ function App() {
             ) : (
               detH.myAnalysis || detH.myPros || detH.myCons ? (
                 <div>
-                  {detH.myPros && <div style={{ fontSize: 12, color: "#166534", marginBottom: 2 }}>＋ {detH.myPros}</div>}
-                  {detH.myCons && <div style={{ fontSize: 12, color: "#991b1b", marginBottom: 2 }}>－ {detH.myCons}</div>}
+                  {detH.myPros && <div style={{ fontSize: 12, color: "#166534", marginBottom: 2 }}>+ {detH.myPros}</div>}
+                  {detH.myCons && <div style={{ fontSize: 12, color: "#991b1b", marginBottom: 2 }}>- {detH.myCons}</div>}
                   {detH.myAnalysis && <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-wrap", marginTop: 4 }}>{detH.myAnalysis}</div>}
                 </div>
               ) : (
@@ -635,7 +778,7 @@ function App() {
       {/* TAB 2: 結果・振り返り                             */}
       {/* ═════════════════════════════════════════════════ */}
       {tab === "results" && (
-        <div>
+        <div className="keiba-tab-active">
           <Sec>着順を入力</Sec>
           <Card style={{ marginBottom: 10 }}>
             {["r1", "r2", "r3"].map((key, i) => (
@@ -659,8 +802,8 @@ function App() {
                   { l: "本命", v: ar.honWin ? "1着的中" : ar.honHit ? "3着内" : "ハズレ", c: ar.honWin ? "#16a34a" : ar.honHit ? "#d97706" : "#dc2626", b: ar.honWin ? "#dcfce7" : ar.honHit ? "#fef9c3" : "#fee2e2" },
                   { l: "3着カバー", v: `${ar.t3Hit}/3`, c: ar.t3Hit >= 2 ? "#16a34a" : "#d97706", b: ar.t3Hit >= 2 ? "#dcfce7" : "#fef9c3" },
                   { l: "消し精度", v: ar.kMiss > 0 ? `${ar.kMiss}失敗` : "全正解", c: ar.kMiss === 0 ? "#16a34a" : "#dc2626", b: ar.kMiss === 0 ? "#dcfce7" : "#fee2e2" },
-                ].map((s) => (
-                  <Card key={s.l} style={{ flex: "1 1 85px", textAlign: "center", background: s.b, border: "none" }}>
+                ].map((s, idx) => (
+                  <Card key={s.l} style={{ flex: "1 1 85px", textAlign: "center", background: s.b, border: "none", animationDelay: `${idx * 0.1}s` }} className="keiba-score-card">
                     <div style={{ fontSize: 10, fontWeight: 700, color: "#6b7280" }}>{s.l}</div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: s.c, marginTop: 2 }}>{s.v}</div>
                   </Card>
@@ -699,11 +842,11 @@ function App() {
                   <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <Card style={{ flex: 1, textAlign: "center", background: comp.aiW > comp.myW ? "#faf5ff" : "#fff", border: comp.aiW > comp.myW ? "2px solid #8b5cf6" : "1px solid #e5e7eb" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed" }}>AI</div>
-                      <div style={{ fontSize: 24, fontWeight: 900, color: "#7c3aed" }}>{comp.aiW}</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "#7c3aed" }}><CountUp to={comp.aiW} /></div>
                     </Card>
                     <Card style={{ flex: 1, textAlign: "center", background: comp.myW > comp.aiW ? "#ecfeff" : "#fff", border: comp.myW > comp.aiW ? "2px solid #06b6d4" : "1px solid #e5e7eb" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#0891b2" }}>自分</div>
-                      <div style={{ fontSize: 24, fontWeight: 900, color: "#0891b2" }}>{comp.myW}</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "#0891b2" }}><CountUp to={comp.myW} /></div>
                     </Card>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 12 }}>
@@ -751,7 +894,7 @@ function App() {
       {/* TAB 3: 履歴                                       */}
       {/* ═════════════════════════════════════════════════ */}
       {tab === "history" && (
-        <div>
+        <div className="keiba-tab-active">
           <Sec>累計成績</Sec>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             {[
@@ -775,11 +918,11 @@ function App() {
               <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <Card style={{ flex: 1, textAlign: "center", background: hist.aW > hist.mW ? "#faf5ff" : "#fff" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed" }}>AI</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#7c3aed" }}>{hist.aW}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#7c3aed" }}><CountUp to={hist.aW} /></div>
                 </Card>
                 <Card style={{ flex: 1, textAlign: "center", background: hist.mW > hist.aW ? "#ecfeff" : "#fff" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#0891b2" }}>自分</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#0891b2" }}>{hist.mW}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#0891b2" }}><CountUp to={hist.mW} /></div>
                 </Card>
               </div>
             </>
@@ -811,7 +954,7 @@ function App() {
         </div>
       )}
 
-      <div style={{ textAlign: "center", marginTop: 20, padding: 10, fontSize: 10, color: "#d1d5db" }}>
+      <div style={{ textAlign: "center", marginTop: 20, padding: 10, fontSize: 10, color: "#d1d5db" }} className="keiba-footer">
         競馬予想ノート v3.0 ─ 馬券は自己責任で
       </div>
     </div>
