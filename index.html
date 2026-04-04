@@ -302,6 +302,9 @@ function App() {
   return (
     <div style={{ fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", background: "#f8fafc", minHeight: "100vh", padding: "12px 14px", maxWidth: 820, margin: "0 auto" }}>
 
+      {/* ── Sticky Header ── */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#f8fafc", paddingTop: 4, paddingBottom: 0, marginLeft: -14, marginRight: -14, paddingLeft: 14, paddingRight: 14 }}>
+
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>競馬予想ノート</span>
@@ -348,7 +351,7 @@ function App() {
       </div>
 
       {/* Tab Bar */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 12, borderBottom: "2px solid #e5e7eb", position: "sticky", top: 0, zIndex: 50, background: "#f8fafc", paddingTop: 6 }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 0, borderBottom: "2px solid #e5e7eb" }}>
         {TABS.map((t) => (
           <button key={t.key} onClick={() => { setTab(t.key); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
             style={{ flex: 1, padding: "10px 8px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: "none", border: "none", color: tab === t.key ? "#1d4ed8" : "#6b7280", borderBottom: tab === t.key ? "3px solid #2563eb" : "3px solid transparent", marginBottom: -2, textAlign: "center" }}>
@@ -356,6 +359,8 @@ function App() {
           </button>
         ))}
       </div>
+
+      </div>{/* ── /Sticky Header ── */}
 
       {/* ═════════════════════════════════════════════════ */}
       {/* TAB 1: 分析・予想                                 */}
