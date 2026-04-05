@@ -62,13 +62,13 @@ const INITIAL_RACES = [
     ],
 
     horses: [
-      { num: 1, frame: 1, name: "サンストックトン", jockey: "高杉吏麒", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
-      { num: 2, frame: 1, name: "ジューンテイク", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "京都記念1着", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
-      { num: 3, frame: 2, name: "ステラヴェローチェ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 1, frame: 1, name: "サンストックトン", jockey: "高杉吏麒", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 2, frame: 1, name: "ジューンテイク", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "京都記念1着", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 3, frame: 2, name: "ステラヴェローチェ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
       {
         num: 4, frame: 3, name: "ダノンデサイル", jockey: "坂井瑠星", odds: 4.4,
         training: "B", style: "中団", age: "4歳", weight: "58kg",
-        sire: "エピファネイア", damSire: "-",
+        sire: "エピファネイア", dam: "トップデサイル", sireSire: "シンボリクリスエス", sireDam: "シーザリオ", damSire: "Scat Daddy", damDam: "フレンチバレリーナ",
         note: "ダービー馬。好枠だが乗り替わり",
         aiAnalysis: "【2番人気候補 ─ 3枠4番の好枠】\n2024年日本ダービー馬。能力は折り紙付き。3枠4番の好枠を確保し、阪神内回りではこの枠は有利。ドバイシーマクラシック→大阪杯に目標変更（中東情勢で遠征回避）。\n\n最大のリスクは鞍上の乗り替わり。戸崎圭太が騎乗停止（3/14中山9Rの進路妨害、3/28〜4/5停止）で坂井瑠星との初コンビ。大阪杯での乗り替わりは過去データ上マイナス傾向。安田翔伍調教師が3/16に乗り替わりを発表。\n\n一部予想ではダノンデサイル3.2倍で1番人気、クロワデュノール3.5倍で2番人気という見解もあり、「圧倒的1番人気」ではなく「僅差の1番人気争い」が正確な表現。",
         aiPros: "2024年ダービー馬の実力 / 3枠4番の好枠（阪神内回りで有利）/ 阪神内回り適性",
@@ -76,7 +76,7 @@ const INITIAL_RACES = [
         aiTop3Pct: 50,
         myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
       },
-      { num: 5, frame: 3, name: "エリキング", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "京都記念2着", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 5, frame: 3, name: "エリキング", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "京都記念2着", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
       {
         num: 6, frame: 4, name: "メイショウタバル", jockey: "武豊", odds: 5.6,
         training: "B", style: "逃げ", age: "5歳", weight: "58kg",
@@ -88,7 +88,7 @@ const INITIAL_RACES = [
         aiTop3Pct: 45,
         myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
       },
-      { num: 7, frame: 4, name: "ベラジオオペラ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "昨年の大阪杯勝ち馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 7, frame: 4, name: "ベラジオオペラ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "昨年の大阪杯勝ち馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
       { num: 8, frame: 5, name: "ショウヘイ", jockey: "-", odds: 5.4,
         training: "A", style: "-", age: "-", weight: "58kg",
         sire: "-", damSire: "-",
@@ -99,9 +99,9 @@ const INITIAL_RACES = [
         aiTop3Pct: 45,
         myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null,
       },
-      { num: 9, frame: 5, name: "タスティエーラ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "2023ダービー馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
-      { num: 10, frame: 6, name: "プラダリア", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
-      { num: 11, frame: 6, name: "ソールオリエンス", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", damSire: "-", note: "2023皐月賞馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 9, frame: 5, name: "タスティエーラ", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "2023ダービー馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 10, frame: 6, name: "プラダリア", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
+      { num: 11, frame: 6, name: "ソールオリエンス", jockey: "-", odds: null, training: "-", style: "-", age: "-", weight: "58kg", sire: "-", dam: "-", sireSire: "-", sireDam: "-", damSire: "-", damDam: "-", note: "2023皐月賞馬", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null },
       {
         num: 12, frame: 7, name: "レーベンスティール", jockey: "ルメール", odds: 9.2,
         training: "A", style: "差し", age: "-", weight: "58kg",
@@ -116,7 +116,7 @@ const INITIAL_RACES = [
       {
         num: 13, frame: 7, name: "エコロディノス", jockey: "池添謙一", odds: null,
         training: "B", style: "先行", age: "4歳", weight: "58kg",
-        sire: "キタサンブラック", damSire: "-",
+        sire: "キタサンブラック", dam: "アメリカンダイナー", sireSire: "ブラックタイド", sireDam: "シュガーハート", damSire: "Afleet Alex", damDam: "-",
         note: "芝2000m全て圏内。穴馬最有力",
         aiAnalysis: "【穴馬最上位評価 ─ 3着以内の可能性: 約20%】\n\n4歳牡馬。栗東・大久保龍志厩舎。キャリア8戦と浅いが直近5走で3勝。\n\n前走: GII京都記念3着（重賞初挑戦でいきなり3着に食い込む。1着ジューンテイク、2着エリキングに次ぐ好走。GIIで通用する力を既に証明済）。\n\n【距離適性】芝2000mでは全て馬券圏内。この距離での信頼度はメンバー中トップクラス。\n【コース適性】阪神コース4戦3度馬券圏内。舞台との相性が抜群に良い。\n\n【血統的裏付け】父キタサンブラックは阪神芝2000mで勝率16.1%・複勝率38.7%の好相性。クロワデュノールと同じ父系で、この舞台への血統的裏付けがしっかりある。\n\n4歳馬であることもプラス。GI昇格後の大阪杯で優勝馬は4歳と5歳に限定されており、年齢条件に合致。成長途上でまだ上積みが見込める。先行力と持続力が武器で、阪神内回りの適性にも合う。\n\n【リスク】GI未経験で相手が一気に強化。池添謙一はベテランで経験豊富だが近年のGI勝ちは少なく、ルメール・武豊・川田レベルとの騎手力差はある。キャリア8戦で経験が浅く、GIの厳しい流れに戸惑う可能性。調教はカリカリした面や頭の高さが目につくとの指摘。\n\n【馬券的バリュー】レーベンスティール（9.2倍）より人気薄であれば期待値が高い可能性がある。三連複のヒモとしてはタガノデュードより明確に優先して入れたい馬。馬連・ワイドで上位馬との組み合わせも検討の余地あり。",
         aiPros: "芝2000m全て馬券圏内（距離適性トップ）/ 阪神4戦3度圏内（コース適性◎）/ 父キタサンブラック産駒（阪神2000m複勝率38.7%）/ 前走GII京都記念3着（GII好走済）/ 4歳の上積み / 先行力と持続力",
@@ -127,7 +127,7 @@ const INITIAL_RACES = [
       {
         num: 14, frame: 8, name: "タガノデュード", jockey: "古川吉洋", odds: null,
         training: "C", style: "差し", age: "5歳", weight: "58kg",
-        sire: "ヤマカツエース", damSire: "ハーツクライ",
+        sire: "ヤマカツエース", dam: "-", sireSire: "キングカメハメハ", sireDam: "-", damSire: "ハーツクライ", damDam: "-",
         note: "小倉大賞典勝ち。GI初挑戦",
         aiAnalysis: "【穴馬 ─ 3着以内の可能性: 10〜15%】\n\n5歳牡馬。栗東・宮徹厩舎。斤量58kg。26戦5勝。総賞金1億4945万円。\n\n前走: GIII小倉大賞典（芝1800m）1着。4番人気から上がり最速で差し切り勝ち。外を回すロスがありながらの勝利で内容は濃い。タイム1:45.2（良）。古川吉洋騎手のJRA通算600勝達成レース。直近2連勝中で勢いがある。\n\n【距離適性】芝2000mでの複勝率が77.8%（一部メディア報）。距離そのものへの適性は高い。\n\n【プラス材料】\n・差し脚質 → 内が荒れた馬場なら外から差す展開が合う\n・8枠14番 → 内の傷みを避けて外を回る分にはロスが少ない\n・大阪杯GI昇格後、6〜9番人気から3着内が7回 → 穴枠に合致\n\n【マイナス材料】\n・GIIIを1つ勝っただけでGI挑戦は格上げ幅が大きい。ダービー馬2頭、宝塚記念馬が相手では実績が見劣り\n・調教評価C: 頭の位置が高く硬めの脚さばき。力強さに欠けるとの評価\n・古川吉洋はGI実績に乏しい。大舞台での経験値不足\n・父ヤマカツエース産駒は阪神芝2000mで0勝（5走）\n・小倉大賞典は芝1800m。200m延長で阪神の急坂を乗り越えるスタミナが問われる\n\n【馬券的判断】三連複・三連単のヒモ（末端候補）としてなら検討の余地あり。特に馬場が回復しきらず「やや重」のまま→差し有利の展開になった場合、外を回して上がり最速で突っ込んでくるシナリオはゼロではない。ただし軸にするのは危険。「保険のヒモに1点入れておく」タイプの馬。",
         aiPros: "芝2000m複勝率77.8% / 直近2連勝の勢い / 差し脚質が内荒れ馬場に合う / 穴枠の傾向データに合致",
@@ -138,7 +138,7 @@ const INITIAL_RACES = [
       {
         num: 15, frame: 8, name: "クロワデュノール", jockey: "北村友一", odds: 3.9,
         training: "B", style: "先行", age: "4歳", weight: "58kg",
-        sire: "キタサンブラック", damSire: "-",
+        sire: "キタサンブラック", dam: "マルケッサ", sireSire: "ブラックタイド", sireDam: "シュガーハート", damSire: "Orfevre", damDam: "-",
         note: "GI2勝。大外枠が最大懸念",
         aiAnalysis: "【1番人気候補 ─ 実績最上位だが大外枠の試練】\n\nGI2勝の実績はメンバー最上位。2024年ホープフルS（中山芝2000m）、2025年日本ダービー（東京芝2400m）を制覇。出走メンバーの中でGI勝利数は最多。4歳にして豊富な実績を持つ。\n\n【強み】\n・スピード持続力が最大の武器。4〜5Fからスムーズに加速してスピードを持続させる能力に優れる。早めにアクセルを踏める展開になれば、自慢の持続力でそのまま押し切れる馬。\n・北村友一騎手との継続コンビ。鞍上変更がないことは大きなアドバンテージ。対するダノンデサイルは初コンビという不安要素がある。\n\n【最大の懸念: 大外8枠15番】\nGI昇格後の大阪杯で大外枠は0勝（0-1-0-8）、勝率0%。阪神内回り2000mは最初のコーナーまでの距離が短く、大外からだと先行ポジション確保に大きなロスが発生する。\n\nこの馬は前目で競馬したいタイプなので、枠順の影響をモロに受ける可能性がある。馬群に包まれた時の脆さ（アクセルを踏めない状況になると持ち味が出せない）も弱点で、大外枠はその弱点を増幅するリスク。SNSでも「大外かよ」「試練の枠」と大きな反応が出ている。\n\n能力は最上位だが、枠順という物理的不利をどう克服するかが全てのレース。",
         aiPros: "GI2勝の最上位実績（ホープフルS・ダービー）/ スピード持続力が武器 / 北村友一との継続騎乗の安定感",
@@ -454,8 +454,9 @@ function App() {
 
   /* ── Form state hooks ── */
   const [showAddH, setShowAddH] = useState(false);
-  const [nh, setNh] = useState({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" });
+  const [nh, setNh] = useState({ name: "", num: "", frame: "", age: "", jockey: "", sire: "", damSire: "", odds: "", training: "-", style: "-", note: "" });
 
+  const [editingPedigree, setEditingPedigree] = useState(null);
   const [showAddNote, setShowAddNote] = useState(false);
   const [nn, setNn] = useState({ title: "", body: "" });
 
@@ -767,8 +768,8 @@ function App() {
   };
   const addH = () => {
     if (!nh.name) return;
-    upd({ horses: [...race.horses, { ...nh, num: +nh.num || 0, frame: +nh.frame || 0, odds: nh.odds ? +nh.odds : null, sire: "", damSire: "", age: "", weight: "58kg", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null }] });
-    setNh({ name: "", num: "", frame: "", jockey: "", odds: "", training: "-", style: "-", note: "" }); setShowAddH(false);
+    upd({ horses: [...race.horses, { ...nh, num: +nh.num || 0, frame: +nh.frame || 0, odds: nh.odds ? +nh.odds : null, sire: nh.sire || "-", dam: "-", sireSire: "-", sireDam: "-", damSire: nh.damSire || "-", damDam: "-", age: nh.age || "-", weight: "58kg", aiAnalysis: "", aiPros: "", aiCons: "", aiTop3Pct: null, myAnalysis: "", myPros: "", myCons: "", myTop3Pct: null }] });
+    setNh({ name: "", num: "", frame: "", age: "", jockey: "", sire: "", damSire: "", odds: "", training: "-", style: "-", note: "" }); setShowAddH(false);
   };
   const addNote = () => { if (!nn.title) return; upd({ raceNotes: [...(race.raceNotes || []), { ...nn }] }); setNn({ title: "", body: "" }); setShowAddNote(false); };
 
@@ -813,7 +814,7 @@ function App() {
       {/* Race Selector */}
       <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 8 }}>
         {races.map((r, i) => (
-          <Btn key={r.id} active={i === selRace} onClick={() => { setSelRace(i); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
+          <Btn key={r.id} active={i === selRace} onClick={() => { setSelRace(i); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); setEditingPedigree(null); }}
             style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: 12 }}>
             <span style={{ padding: "1px 6px", borderRadius: 4, background: i === selRace ? "#2563eb" : "#e5e7eb", color: i === selRace ? "#fff" : "#6b7280", fontSize: 10, fontWeight: 800, marginRight: 4 }}>{r.grade}</span>
             {r.name} {r.year}
@@ -852,7 +853,7 @@ function App() {
       {/* Tab Bar */}
       <div style={{ display: "flex", gap: 0, marginBottom: 0, borderBottom: "2px solid #e5e7eb" }}>
         {TABS.map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
+          <button key={t.key} onClick={() => { setTab(t.key); setDetailHorse(null); setEditingHorse(null); setEditingAi(null); setEditingPedigree(null); }}
             style={{ flex: 1, padding: "10px 8px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: "none", border: "none", color: tab === t.key ? "#1d4ed8" : "#6b7280", borderBottom: tab === t.key ? "3px solid #2563eb" : "3px solid transparent", marginBottom: -2, textAlign: "center", transition: "all 0.3s cubic-bezier(.25,.46,.45,.94)" }}>
             {t.label}
           </button>
@@ -917,9 +918,12 @@ function App() {
                       {hasAi && <span style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700 }}>分析あり</span>}
                     </div>
                     <div style={{ fontSize: 10, color: "#9ca3af" }}>
+                      {h.age && h.age !== "-" && <span style={{ color: "#6b7280", marginRight: 4 }}>{h.age}</span>}
                       {h.jockey && h.jockey !== "-" ? h.jockey : ""}
-                      {h.note && <span style={{ marginLeft: 4, color: "#6b7280" }}>{h.note}</span>}
+                      {(h.sire && h.sire !== "-") && <span style={{ marginLeft: 4, color: "#7c3aed", fontSize: 9 }}>父{h.sire}</span>}
+                      {(h.damSire && h.damSire !== "-") && <span style={{ marginLeft: 3, color: "#be185d", fontSize: 9 }}>母父{h.damSire}</span>}
                     </div>
+                    {h.note && <div style={{ fontSize: 10, color: "#6b7280" }}>{h.note}</div>}
                   </div>
                   {/* AI% / 自分% */}
                   <div style={{ textAlign: "right", flexShrink: 0, minWidth: 40 }}>
@@ -938,7 +942,7 @@ function App() {
           {showAddH && (
             <Card style={{ marginBottom: 10, border: "2px solid #2563eb" }}>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {[{ k: "name", ph: "馬名", w: 100 }, { k: "num", ph: "番", w: 35 }, { k: "frame", ph: "枠", w: 30 }, { k: "jockey", ph: "騎手", w: 70 }, { k: "odds", ph: "倍率", w: 45 }, { k: "note", ph: "メモ", w: 150 }].map(({ k, ph, w }) => (
+                {[{ k: "name", ph: "馬名", w: 100 }, { k: "num", ph: "番", w: 35 }, { k: "frame", ph: "枠", w: 30 }, { k: "age", ph: "年齢", w: 40 }, { k: "jockey", ph: "騎手", w: 70 }, { k: "sire", ph: "父", w: 90 }, { k: "damSire", ph: "母父", w: 90 }, { k: "odds", ph: "倍率", w: 45 }, { k: "note", ph: "メモ", w: 150 }].map(({ k, ph, w }) => (
                   <input key={k} placeholder={ph} value={nh[k]} onChange={(e) => setNh({ ...nh, [k]: e.target.value })}
                     style={{ width: w, padding: "5px 6px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 11 }} />
                 ))}
@@ -1010,7 +1014,7 @@ function App() {
       {/* ── 馬別詳細ビュー（一覧表からタップで遷移）── */}
       {tab === "analysis" && detailHorse && detH && (
         <div className="keiba-detail-view">
-          <button onClick={() => { setDetailHorse(null); setEditingHorse(null); setEditingAi(null); }}
+          <button onClick={() => { setDetailHorse(null); setEditingHorse(null); setEditingAi(null); setEditingPedigree(null); }}
             style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: 700, marginBottom: 8 }}>← 一覧に戻る</button>
 
           {/* Horse header */}
@@ -1027,10 +1031,73 @@ function App() {
               {detH.weight && <Badge bg="#f3f4f6" color="#374151">{detH.weight}</Badge>}
               {detH.training && detH.training !== "-" && (() => { const t = TC[detH.training]; return <Badge bg={t.bg} color={t.tx} border={t.bd}>調教{detH.training}</Badge>; })()}
               {detH.style && detH.style !== "-" && <Badge bg="#fff" color={SC[detH.style] || "#9ca3af"} border={SC[detH.style] || "#d1d5db"}>{detH.style}</Badge>}
-              {detH.sire && detH.sire !== "-" && <Badge bg="#ede9fe" color="#6d28d9">父 {detH.sire}</Badge>}
-              {detH.damSire && detH.damSire !== "-" && <Badge bg="#fce7f3" color="#be185d">母父 {detH.damSire}</Badge>}
             </div>
             <PctBar ai={detH.aiTop3Pct} my={detH.myTop3Pct} />
+          </Card>
+
+          {/* 血統ツリー (Pedigree) */}
+          <Card style={{ marginBottom: 10, padding: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#374151" }}>血統</span>
+              <button onClick={() => setEditingPedigree(editingPedigree === detH.name ? null : detH.name)}
+                style={{ fontSize: 11, color: "#374151", background: "none", border: "1px solid #e5e7eb", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontWeight: 700 }}>
+                {editingPedigree === detH.name ? "閉じる" : (detH.sire && detH.sire !== "-") ? "編集" : "＋ 追加"}
+              </button>
+            </div>
+            {editingPedigree === detH.name && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, marginBottom: 8 }}>
+                {[{ k: "sire", l: "父" }, { k: "dam", l: "母" }, { k: "sireSire", l: "父父" }, { k: "sireDam", l: "父母" }, { k: "damSire", l: "母父" }, { k: "damDam", l: "母母" }].map(({ k, l }) => (
+                  <input key={k} placeholder={l} value={detH[k] === "-" ? "" : (detH[k] || "")} onChange={(e) => updH(detH.name, k, e.target.value || "-")}
+                    style={{ padding: "4px 6px", borderRadius: 4, border: "1px solid #d1d5db", fontSize: 11, width: "100%", boxSizing: "border-box" }} />
+                ))}
+              </div>
+            )}
+            {(detH.sire && detH.sire !== "-") && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "repeat(4, auto)", gap: "0", fontSize: 11, lineHeight: 1.3 }}>
+              {/* 父系 (rows 1-2) */}
+                <div style={{ gridRow: "1 / 3", gridColumn: 1, display: "flex", alignItems: "center", borderRight: "2px solid #e5e7eb", paddingRight: 8 }}>
+                  <div style={{ background: "#ede9fe", color: "#6d28d9", padding: "6px 8px", borderRadius: 6, fontWeight: 700, width: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#8b5cf6", marginBottom: 2 }}>父</div>
+                    {detH.sire}
+                  </div>
+                </div>
+                <div style={{ gridRow: 1, gridColumn: 2, display: "flex", alignItems: "center", borderRight: "2px solid #f3f4f6", paddingLeft: 8, paddingRight: 6, paddingTop: 4, paddingBottom: 2 }}>
+                  <div style={{ background: "#f5f3ff", color: "#7c3aed", padding: "4px 6px", borderRadius: 4, width: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, color: "#a78bfa" }}>父父</div>
+                    {detH.sireSire && detH.sireSire !== "-" ? detH.sireSire : "—"}
+                  </div>
+                </div>
+                <div style={{ gridRow: 2, gridColumn: 2, display: "flex", alignItems: "center", borderRight: "2px solid #f3f4f6", paddingLeft: 8, paddingRight: 6, paddingTop: 2, paddingBottom: 4 }}>
+                  <div style={{ background: "#fdf2f8", color: "#be185d", padding: "4px 6px", borderRadius: 4, width: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, color: "#f472b6" }}>父母</div>
+                    {detH.sireDam && detH.sireDam !== "-" ? detH.sireDam : "—"}
+                  </div>
+                </div>
+
+                {/* 母系 (rows 3-4) */}
+                <div style={{ gridRow: "3 / 5", gridColumn: 1, display: "flex", alignItems: "center", borderRight: "2px solid #e5e7eb", paddingRight: 8, borderTop: "1px solid #f3f4f6", paddingTop: 4 }}>
+                  <div style={{ background: "#fce7f3", color: "#be185d", padding: "6px 8px", borderRadius: 6, fontWeight: 700, width: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#ec4899", marginBottom: 2 }}>母</div>
+                    {detH.dam && detH.dam !== "-" ? detH.dam : "—"}
+                  </div>
+                </div>
+                <div style={{ gridRow: 3, gridColumn: 2, display: "flex", alignItems: "center", borderRight: "2px solid #f3f4f6", paddingLeft: 8, paddingRight: 6, paddingTop: 4, paddingBottom: 2, borderTop: "1px solid #f3f4f6" }}>
+                  <div style={{ background: "#f5f3ff", color: "#7c3aed", padding: "4px 6px", borderRadius: 4, width: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, color: "#a78bfa" }}>母父</div>
+                    {detH.damSire && detH.damSire !== "-" ? detH.damSire : "—"}
+                  </div>
+                </div>
+                <div style={{ gridRow: 4, gridColumn: 2, display: "flex", alignItems: "center", borderRight: "2px solid #f3f4f6", paddingLeft: 8, paddingRight: 6, paddingTop: 2, paddingBottom: 4 }}>
+                  <div style={{ background: "#fdf2f8", color: "#be185d", padding: "4px 6px", borderRadius: 4, width: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, color: "#f472b6" }}>母母</div>
+                    {detH.damDam && detH.damDam !== "-" ? detH.damDam : "—"}
+                  </div>
+                </div>
+            </div>
+            )}
+            {!(detH.sire && detH.sire !== "-") && editingPedigree !== detH.name && (
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>「＋ 追加」をタップして血統を入力</div>
+            )}
           </Card>
 
           {/* AI Analysis */}
