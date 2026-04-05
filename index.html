@@ -333,7 +333,7 @@ function App() {
             const initH = (initRace.horses || []).find(h => h.name === dbH.name);
             if (!initH) return dbH;
             // Copy fields from INITIAL_RACES that are missing or default in DB data
-            const fields = ["dam", "sireSire", "sireDam", "damSire", "damDam", "age"];
+            const fields = ["sire", "dam", "sireSire", "sireDam", "damSire", "damDam", "age"];
             const patch = {};
             fields.forEach(f => {
               if ((!dbH[f] || dbH[f] === "-") && initH[f] && initH[f] !== "-") {
