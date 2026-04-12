@@ -442,14 +442,13 @@ function App() {
 
       if (data?.races && Array.isArray(data.races) && data.races.length > 0) {
         console.log("[loadUserData] loaded", data.races.length, "races from DB");
-        // Merge: fill in missing fields from INITIAL_RACES (e.g. new pedigree data)
-        const merged = data.races.map((dbRace, ri) => {
-          const initRace = INITIAL_RACES[ri];
+        // Merge: fill in missing fields + add new races from INITIAL_RACES
+        const merged = data.races.map((dbRace) => {
+          const initRace = INITIAL_RACES.find(r => r.id === dbRace.id);
           if (!initRace) return dbRace;
           const mergedHorses = (dbRace.horses || []).map(dbH => {
             const initH = (initRace.horses || []).find(h => h.name === dbH.name);
             if (!initH) return dbH;
-            // Copy fields from INITIAL_RACES that are missing or default in DB data
             const fields = ["sire", "dam", "sireSire", "sireDam", "damSire", "damDam", "age"];
             const patch = {};
             fields.forEach(f => {
@@ -461,8 +460,12 @@ function App() {
           });
           return { ...dbRace, horses: mergedHorses };
         });
+        // Add new races from INITIAL_RACES that don't exist in DB
+        const dbIds = new Set(data.races.map(r => r.id));
+        const newRaces = INITIAL_RACES.filter(r => !dbIds.has(r.id));
+        const final = newRaces.length > 0 ? [...merged, ...newRaces] : merged;
         dataLoadedRef.current = true;
-        setRaces(merged);
+        setRaces(final);
       } else {
         console.log("[loadUserData] no data found, saving INITIAL_RACES");
         await saveToSupabase(userId, INITIAL_RACES);
